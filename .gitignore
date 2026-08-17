@@ -1,1 +1,35 @@
-# Repository-specific ignore rules will be added with implementation scaffolding.
+# OS
+.DS_Store
+
+# Editors and IDEs
+.idea/
+.vscode/
+
+# Xcode
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Test and coverage output
+*.xcresult
+
+# Signing, notarization, and distribution material
+*.p12
+*.p8
+*.cer
+*.certSigningRequest
+*.provisionprofile
+*.pem
+*.key
+*.dmg
+*.pkg
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
