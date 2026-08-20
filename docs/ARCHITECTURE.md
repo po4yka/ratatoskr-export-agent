@@ -510,13 +510,13 @@ The agent sees raw private exports and therefore minimizes exposure.
 Representative Platform calls:
 
 ```text
-POST /v2/devices/pair
-POST /v2/ai-archives/imports
-POST /v2/ai-archives/imports/{id}/upload-session
-POST /v2/ai-archives/imports/{id}/complete-upload
-GET  /v2/operations/{id}
-GET  /v2/operations/{id}/events
-GET  /v2/ai-archives/reports/{id}
+POST /v1/devices/pair
+POST /v1/ai-archives/imports
+POST /v1/ai-archives/imports/{id}/upload-session
+POST /v1/ai-archives/imports/{id}/complete-upload
+GET  /v1/operations/{id}
+GET  /v1/operations/{id}/events
+GET  /v1/ai-archives/reports/{id}
 ```
 
 The public API is defined by `ratatoskr-platform` and `ratatoskr-contracts`. The agent uses a generated or strongly typed client and does not call ChatGPT/Claude services directly.
