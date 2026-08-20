@@ -9,6 +9,12 @@ Architecture bootstrap: the macOS app/background component, watcher, journal, Ke
 
 Swift 6, SwiftUI/AppKit where necessary, structured concurrency, FileManager/FileCoordinator, SQLite or another durable local journal, Keychain, URLSession, background scheduling, unified logging, XCTest, Xcode build/signing/notarization.
 
+## Code size limits
+
+There is no code here yet, so no limit is enforced yet. This is also one of the two repositories whose first code is Swift or Kotlin, and the fleet has chosen no linter for either language. `fleet.yml` asserts that a `Cargo.toml` arrives with a `clippy.toml` and that a `package.json` arrives with an `eslint.config.js`. It can assert nothing for a `Package.swift` or a `build.gradle.kts`, because there is no fleet answer to name. The scaffold pull request here names the tool and the file that carry the limits, and adds that assertion to `fleet.yml` in all seventeen repositories.
+
+`ratatoskr-workspace/docs/QUALITY_GATES.md` holds the numbers the repositories with code use today, the command that measured each one, and the limits that were rejected with the reason. Read it before you choose numbers, then measure this tree. Each limit is set at the worst case the tree already has, so that the check fails on a regression and not on work that has not been done yet.
+
 ## Workflow
 
 1. Operate only on user-selected inbox/archive directories with persistent scoped access.
