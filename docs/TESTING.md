@@ -4,7 +4,7 @@ Required tests:
 
 - File events, temporary extensions, stable-size timing, duplicate notifications, permission loss, symlinks, low disk, and atomic moves.
 - Streaming hash, duplicate archive identity, post-move/upload verification.
-- Journal transaction/state migration, crash at every transition, restart recovery, retry schedule, cancellation.
+- Journal transaction/state handling against the current schema, crash at every transition, restart recovery, retry schedule, cancellation.
 - Keychain pairing/rotation/revoke and no-secret diagnostics.
 - Upload chunk/resume/idempotency, offline/timeout/TLS/error classification, backend operation polling.
 - Notification privacy and backup-age reminders.

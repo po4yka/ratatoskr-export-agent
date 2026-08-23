@@ -15,4 +15,4 @@ Device tokens/keys and pairing material live only in Keychain. Local database co
 
 ## Constraints
 
-Hash is the idempotent archive identity. State transitions are transactional. Paths are not synced/logged and are represented relative to approved roots where possible. Archive files are immutable after acceptance. Cleanup never removes the only preserved copy or active upload. Schema migrations are crash-safe and tested against prior app versions.
+Hash is the idempotent archive identity. State transitions are transactional. Paths are not synced/logged and are represented relative to approved roots where possible. Archive files are immutable after acceptance. Cleanup never removes the only preserved copy or active upload. The current schema is created fresh and its state transitions are crash-safe; development status does not permit migrations.

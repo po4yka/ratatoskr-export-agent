@@ -1,6 +1,6 @@
 # Export Agent ADRs
 
-Use `NNNN-short-title.md` with context, options, decision, consequences, security/privacy, macOS lifecycle/distribution, migration, validation, and follow-up.
+Use `NNNN-short-title.md` with context, options, decision, consequences, security/privacy, macOS lifecycle/distribution, schema impact, validation, and follow-up.
 
 Initial backlog:
 

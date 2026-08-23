@@ -293,7 +293,10 @@ Technical metrics/logs remain local and bounded. A diagnostic bundle must redact
 
 ## Workspace integration
 
-`ratatoskr-workspace` pins the Export Agent with compatible Platform, ChatGPT, Claude, and AI-archive contracts. Public CI uses synthetic archives; real personal exports remain outside the repository and protected test infrastructure.
+The planned workspace harness will pin the Export Agent with compatible Platform, ChatGPT, Claude,
+and AI-archive contract commits. That pin and the product CI do not exist yet. Future public CI will
+use synthetic archives; real personal exports remain outside the repository and protected test
+infrastructure.
 
 ## Project status
 

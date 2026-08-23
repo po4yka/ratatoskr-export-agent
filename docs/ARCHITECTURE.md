@@ -479,7 +479,7 @@ The architecture separates durable work from process lifetime.
 - the agent avoids busy polling and excessive wakeups;
 - UI termination does not corrupt queue state;
 - helper and app coordinate through a narrow shared journal/service interface;
-- upgrades preserve journal migrations and resumable jobs.
+- upgrades preserve resumable jobs; while development status holds, the journal uses one current schema definition and no migrations.
 
 ## 20. Filesystem safety
 
@@ -579,7 +579,7 @@ upload_retries
 operation_age
 imports_completed/partial/failed
 last_successful_backup_age
-journal_migration_failures
+journal_schema_failures
 ```
 
 Diagnostics are local-first and sanitized. Optional server telemetry sends only bounded operational metadata under user policy.
@@ -616,7 +616,7 @@ Diagnostics are local-first and sanitized. Optional server telemetry sends only 
 
 ### Persistence
 
-- journal migrations;
+- fresh creation and validation of the current journal schema;
 - process restart at every workflow state;
 - duplicate archives under different names;
 - corrupted journal recovery strategy.
@@ -679,7 +679,7 @@ Initial milestones:
 6. Operation tracking and completeness UI.
 7. Background resume and notifications.
 8. Reminder/freshness model.
-9. Signed/notarized distribution and migration tests.
+9. Signed/notarized distribution and current-schema tests.
 10. Diagnostics, recovery runbooks, and privacy audit.
 
 Changes to provider-login policy, filesystem scope, device credential model, or automatic deletion require ADRs and coordinated workspace changesets.

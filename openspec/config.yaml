@@ -10,7 +10,7 @@ context: |
 
   This repository holds no code yet. Its documents describe intent; a change here plans behaviour, and the first code arrives with its own ci.yml, its lint configuration carrying the size limits, and its tests.
 
-  The gate command list is the fenced block in DEVELOPMENT.md. That list and .github/workflows/ci.yml are one list, and a step in ci.yml fails when they differ, so change both or neither.
+  No product gate or .github/workflows/ci.yml exists yet. Current validation is `openspec validate --all --strict` and `openspec validate --archived`; the first scaffold adds its product command list and matching CI gate.
 
   Development status, binding and overriding anything that plans otherwise: one version only — no v2, no version negotiation, no deprecation window; no database migrations — a schema change edits the schema definition in place; the product is Ratatoskr and never "Ratatoskr Next". Only the repository owner changes this status.
 
@@ -37,8 +37,8 @@ operations:
     guidance:
       - Run the new test before you write the implementation. Confirm it fails for the reason the
         task states, and not for a compile error or a typo.
-      - Run the command list in this repository's DEVELOPMENT.md before the change is complete. That
-        list and .github/workflows/ci.yml are one list, and a step in ci.yml fails when they differ.
+      - Run `openspec validate --all --strict` and `openspec validate --archived`. Once the first
+        scaffold adds a product gate, also run the command list it records in DEVELOPMENT.md.
       - Do not tick a task whose test has not been run.
   archive:
     guidance:
