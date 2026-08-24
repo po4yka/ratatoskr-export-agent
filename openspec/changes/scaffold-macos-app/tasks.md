@@ -59,4 +59,4 @@ Each behaviour below lands as a pair: the first task adds a failing test (file, 
 ## 9. Ship
 
 - [x] 9.1 Commit the work on `feat/app-bootstrap-config-logging` as conventional commits grouped by concern (package+config, logging, app shell, lint+CI, docs). Verify: `git log` shows the grouped history and the worktree diff is fully committed.
-- [ ] 9.2 Merge into `main`, push `origin main` (including the earlier `.worktrees` ignore commit), then remove the worktree and delete the feature branch. Verify: remote `main` contains the merge commit; `git worktree list` and the branch list no longer contain this task's entries.
+- [x] 9.2 Merge into `main`, push `origin main` (including the earlier `.worktrees` ignore commit), then remove the worktree and delete the feature branch. Verify: remote `main` contains the merge commit; `git worktree list` and the branch list no longer contain this task's entries.
