@@ -11,7 +11,7 @@ Swift 6, SwiftUI/AppKit where necessary, structured concurrency, FileManager/Fil
 
 ## Code size limits
 
-There is no code here yet, so no limit is enforced yet. This is also one of the two repositories whose first code is Swift or Kotlin, and the fleet has chosen no linter for either language. `fleet.yml` asserts that a `Cargo.toml` arrives with a `clippy.toml` and that a `package.json` arrives with an `eslint.config.js`. It can assert nothing for a `Package.swift` or a `build.gradle.kts`, because there is no fleet answer to name. The scaffold pull request here names the tool and the file that carry the limits, and adds that assertion to `fleet.yml` in all seventeen repositories.
+SwiftLint carries the size limits through the committed `.swiftlint.yml`; it installs per developer with Homebrew and stays out of `Package.swift` so builds keep their zero-dependency property. Each limit sits at the worst case the tree already has, so the check fails on a regression and not on work that has not been done yet. The measured values today are `line_length` 156 characters, `file_length` 183 lines, `type_body_length` 128 lines, and `function_body_length` 35 lines, with each error threshold one line or character past its warning. Trailing commas in multiline collections are mandatory, matching the formatting applied across the tree.
 
 `ratatoskr-workspace/docs/QUALITY_GATES.md` holds the numbers the repositories with code use today, the command that measured each one, and the limits that were rejected with the reason. Read it before you choose numbers, then measure this tree. Each limit is set at the worst case the tree already has, so that the check fails on a regression and not on work that has not been done yet.
 
@@ -43,3 +43,17 @@ openspec store register <path> --id ratatoskr-workspace
 ```
 
 `openspec doctor` reports whether both are in place.
+
+## Commands CI runs
+
+`.github/workflows/ci.yml` executes exactly these project commands on every push, after installing
+SwiftLint with Homebrew. Keep this list byte-for-byte in sync with the workflow steps; CI fails when
+the two drift apart:
+
+```bash
+swift build
+swift test
+swift build -c release
+.build/release/RatatoskrExportAgent --smoke
+swiftlint
+```
