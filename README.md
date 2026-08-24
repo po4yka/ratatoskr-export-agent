@@ -2,7 +2,7 @@
 
 `ratatoskr-export-agent` is the local macOS companion for importing official ChatGPT and Claude data exports into Ratatoskr. It watches a user-controlled inbox, identifies provider archives, verifies and submits them to the local Ratatoskr deployment, preserves the original files, and reports backup freshness and import completeness.
 
-> **Status:** architecture bootstrap. No macOS application, LaunchAgent, inbox watcher, uploader, or notification flow is implemented yet.
+> **Status:** bootstrap core delivered as a SwiftPM package: typed configuration loading, privacy-redacting logging, a menu-bar agent shell with a headless `--smoke` mode, enforced size limits, and product CI. The inbox watcher, local journal, uploader, Keychain integration, reminders and notifications, LaunchAgent packaging, and signing are not implemented yet.
 
 > [!IMPORTANT]
 > **Ratatoskr is in development.** No database holds data that has to survive a schema change.
@@ -300,4 +300,4 @@ infrastructure.
 
 ## Project status
 
-This README defines the intended macOS export-ingestion companion. No application, background agent, watcher, uploader, or notification implementation exists yet.
+This README defines the intended macOS export-ingestion companion. The package scaffold, typed configuration, redacting logger, menu-bar shell with smoke mode, and product CI exist today; inbox watching, uploading, Keychain, notifications, and distribution packaging remain future work.
