@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build (debug)
+        run: swift build # gate-command
+      - name: Test
+        run: swift test # gate-command
+      - name: Build (release)
+        run: swift build -c release # gate-command
+      - name: Launch release binary in smoke mode
+        run: .build/release/RatatoskrExportAgent --smoke # gate-command
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: Lint
+        run: swiftlint # gate-command
+      - name: Fail when DEVELOPMENT.md command list drifts from these steps
+        run: |
+          awk '/^## Commands CI runs/ {f=1; next} /^## / {f=0} !f {next} /^```bash/ {b=1; next} b && /^```/ {exit} b {print}' DEVELOPMENT.md > "$RUNNER_TEMP/documented.txt"
+          grep -E '^[[:space:]]*-?[[:space:]]*run: .*# gate-command$' .github/workflows/ci.yml | sed -E 's/^[[:space:]]*-?[[:space:]]*run:[[:space:]]*//; s/[[:space:]]*# gate-command$//' | sort > "$RUNNER_TEMP/executed.txt"
+          sort "$RUNNER_TEMP/documented.txt" > "$RUNNER_TEMP/documented.sorted.txt"
+          diff -u "$RUNNER_TEMP/documented.sorted.txt" "$RUNNER_TEMP/executed.txt"

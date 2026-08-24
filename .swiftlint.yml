@@ -1,0 +1,19 @@
+included:
+  - Sources
+  - Tests
+excluded:
+  - .build
+line_length:
+  warning: 156
+  error: 157
+file_length:
+  warning: 183
+  error: 184
+type_body_length:
+  warning: 128
+  error: 129
+function_body_length:
+  warning: 35
+  error: 36
+trailing_comma:
+  mandatory_comma: true
