@@ -33,3 +33,6 @@ xcuserdata/
 .env
 .env.*
 !.env.example
+
+# Linked task worktrees
+.worktrees/
