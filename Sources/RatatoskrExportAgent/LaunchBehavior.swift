@@ -4,6 +4,9 @@ import AppKit
 private var installedStatusItem: NSStatusItem?
 
 @MainActor
+private var installedMenuCoordinator: AgentMenuCoordinator?
+
+@MainActor
 func applyBootstrapPresentation() {
   NSApplication.shared.setActivationPolicy(.accessory)
 
@@ -11,6 +14,9 @@ func applyBootstrapPresentation() {
 
   let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
   statusItem.button?.title = "Ratatoskr"
+  let coordinator = AgentMenuCoordinator()
+  statusItem.menu = AgentMenu.make(coordinator: coordinator)
+  installedMenuCoordinator = coordinator
   installedStatusItem = statusItem
 }
 

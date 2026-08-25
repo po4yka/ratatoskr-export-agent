@@ -11,7 +11,6 @@ final class ConfigurationLoadingTests: XCTestCase {
     let configuration = try AgentConfiguration.load(from: temporaryConfigurationURL())
 
     XCTAssertNil(configuration.backendBaseURL)
-    XCTAssertTrue(configuration.watchedFolders.isEmpty)
     XCTAssertEqual(configuration.maxArchiveBytes, 2 * 1024 * 1024 * 1024)
     XCTAssertEqual(configuration.maxConcurrentUploads, 2)
   }
@@ -43,7 +42,7 @@ final class ConfigurationLoadingTests: XCTestCase {
 
   func testUnknownFieldIsRejectedAndNamed() throws {
     let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "watchedFolders": [], "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "unexpected": true}"#
+      #"{"schemaVersion": 1, "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "unexpected": true}"#
     )
 
     XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
@@ -54,9 +53,22 @@ final class ConfigurationLoadingTests: XCTestCase {
     }
   }
 
+  func testWatchedFoldersFieldIsRejectedAsUnknown() throws {
+    let url = try writeTemporaryConfiguration(
+      #"{"schemaVersion": 1, "watchedFolders": [], "maxArchiveBytes": 1000, "maxConcurrentUploads": 1}"#
+    )
+
+    XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
+      XCTAssertTrue(
+        String(describing: error).contains("watchedFolders"),
+        "expected the error to name the removed watchedFolders field, got: \(error)"
+      )
+    }
+  }
+
   func testHttpsEndpointAccepted() throws {
     let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "watchedFolders": [], "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "backendBaseURL": "https://ratatoskr.example"}"#
+      #"{"schemaVersion": 1, "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "backendBaseURL": "https://ratatoskr.example"}"#
     )
 
     let configuration = try AgentConfiguration.load(from: url)
@@ -66,7 +78,7 @@ final class ConfigurationLoadingTests: XCTestCase {
 
   func testPlainHttpToPublicHostRejected() throws {
     let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "watchedFolders": [], "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "backendBaseURL": "http://backup.example.com:8080"}"#
+      #"{"schemaVersion": 1, "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "backendBaseURL": "http://backup.example.com:8080"}"#
     )
 
     XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
@@ -81,7 +93,7 @@ final class ConfigurationLoadingTests: XCTestCase {
     for host in ["localhost", "127.0.0.1", "::1"] {
       let endpoint = host == "::1" ? "http://[::1]:8443" : "http://\(host):8443"
       let json =
-        "{\"schemaVersion\": 1, \"watchedFolders\": [], \"maxArchiveBytes\": 1000, \"maxConcurrentUploads\": 1, \"backendBaseURL\": \"\(endpoint)\"}"
+        "{\"schemaVersion\": 1, \"maxArchiveBytes\": 1000, \"maxConcurrentUploads\": 1, \"backendBaseURL\": \"\(endpoint)\"}"
       let url = try writeTemporaryConfiguration(json)
 
       let configuration = try AgentConfiguration.load(from: url)
@@ -94,7 +106,7 @@ final class ConfigurationLoadingTests: XCTestCase {
   func testNonPositiveMaxArchiveBytesRejected() throws {
     for budget in [0, -1000] {
       let json =
-        "{\"schemaVersion\": 1, \"watchedFolders\": [], \"maxArchiveBytes\": \(budget), \"maxConcurrentUploads\": 1}"
+        "{\"schemaVersion\": 1, \"maxArchiveBytes\": \(budget), \"maxConcurrentUploads\": 1}"
       let url = try writeTemporaryConfiguration(json)
 
       XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
@@ -109,7 +121,7 @@ final class ConfigurationLoadingTests: XCTestCase {
   func testZeroMaxConcurrentUploadsRejected() throws {
     for concurrency in [0, -1] {
       let json =
-        "{\"schemaVersion\": 1, \"watchedFolders\": [], \"maxArchiveBytes\": 1000, \"maxConcurrentUploads\": \(concurrency)}"
+        "{\"schemaVersion\": 1, \"maxArchiveBytes\": 1000, \"maxConcurrentUploads\": \(concurrency)}"
       let url = try writeTemporaryConfiguration(json)
 
       XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
@@ -121,22 +133,9 @@ final class ConfigurationLoadingTests: XCTestCase {
     }
   }
 
-  func testEmptyWatchedFolderEntryFails() throws {
-    let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "watchedFolders": [""], "maxArchiveBytes": 1000, "maxConcurrentUploads": 1}"#
-    )
-
-    XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
-      XCTAssertTrue(
-        String(describing: error).contains("watchedFolders"),
-        "expected the error to report the empty watchedFolders entry, got: \(error)"
-      )
-    }
-  }
-
   func testValidationErrorNamesFileAndReasonWithoutContents() throws {
     let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "watchedFolders": ["/Users/somebody/private/inbox"], "maxArchiveBytes": 1000, "maxConcurrentUploads": 0}"#
+      #"{"schemaVersion": 1, "maxArchiveBytes": 1000, "maxConcurrentUploads": 0}"#
     )
 
     XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
