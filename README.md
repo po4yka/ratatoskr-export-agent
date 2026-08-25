@@ -2,7 +2,7 @@
 
 `ratatoskr-export-agent` is the local macOS companion for importing official ChatGPT and Claude data exports into Ratatoskr. It watches a user-controlled inbox, identifies provider archives, verifies and submits them to the local Ratatoskr deployment, preserves the original files, and reports backup freshness and import completeness.
 
-> **Status:** bootstrap core delivered as a SwiftPM package: typed configuration loading, privacy-redacting logging, a menu-bar agent shell with a headless `--smoke` mode, watched-folder preferences backed by security-scoped bookmarks (Settings window with per-folder enable and archive-policy controls and actionable access-failure states), enforced size limits, and product CI. The inbox watcher itself, local journal, uploader, Keychain integration, reminders and notifications, LaunchAgent packaging, and signing are not implemented yet.
+> **Status:** bootstrap core delivered as a SwiftPM package: typed configuration loading, privacy-redacting logging, a menu-bar agent shell with a headless `--smoke` mode, watched-folder preferences backed by security-scoped bookmarks (Settings window with per-folder enable and archive-policy controls and actionable access-failure states), enforced size limits, an FSEvents-backed inbox watcher with debounced scans over enabled folders, and completed/stable-file detection (quiet-period evidence, writer-hold probe where detectable, temporary-suffix exclusion, regular-file/size/readability gates) emitting stable candidates. Local journal, hashing, uploader, Keychain integration, reminders and notifications, LaunchAgent packaging, and signing are not implemented yet.
 
 > [!IMPORTANT]
 > **Ratatoskr is in development.** No database holds data that has to survive a schema change.
@@ -300,4 +300,4 @@ infrastructure.
 
 ## Project status
 
-This README defines the intended macOS export-ingestion companion. The package scaffold, typed configuration, redacting logger, menu-bar shell with smoke mode, watched-folder preferences with security-scoped bookmarks and a settings window, and product CI exist today; inbox watching itself, uploading, Keychain, notifications, and distribution packaging remain future work.
+This README defines the intended macOS export-ingestion companion. The package scaffold, typed configuration, redacting logger, menu-bar shell with smoke mode, watched-folder preferences with security-scoped bookmarks and a settings window, the inbox watcher over enabled folders, and completed/stable-file detection exist today; hashing, the local journal, uploading, Keychain, notifications, and distribution packaging remain future work.
