@@ -4,13 +4,11 @@ import Foundation
 ///
 /// Fields map one-to-one onto the JSON configuration document. Loading
 /// applies documented defaults when the file does not exist and rejects
-/// documents that deviate from the schema instead of guessing.
+/// documents that deviate from the schema instead of guessing. Watched
+/// folders are owned by the per-folder preferences registry, not here.
 public struct AgentConfiguration: Equatable, Sendable {
   /// Base URL of the Ratatoskr Platform API. Nil while unconfigured.
   public var backendBaseURL: URL?
-
-  /// User-selected folders observed for completed export archives.
-  public var watchedFolders: [String]
 
   /// Largest archive accepted for upload, in bytes.
   public var maxArchiveBytes: Int
@@ -19,21 +17,18 @@ public struct AgentConfiguration: Equatable, Sendable {
   public var maxConcurrentUploads: Int
 
   /// Documented defaults applied when no configuration file exists: no
-  /// backend URL yet, no watched folders, a 2 GiB archive ceiling, and up
-  /// to two concurrent uploads.
+  /// backend URL yet, a 2 GiB archive ceiling, and up to two concurrent
+  /// uploads.
   public static let defaultValue = AgentConfiguration(
     backendBaseURL: nil,
-    watchedFolders: [],
     maxArchiveBytes: 2 * 1024 * 1024 * 1024,
     maxConcurrentUploads: 2
   )
 
   public init(
-    backendBaseURL: URL? = nil, watchedFolders: [String] = [], maxArchiveBytes: Int = 0,
-    maxConcurrentUploads: Int = 0
+    backendBaseURL: URL? = nil, maxArchiveBytes: Int = 0, maxConcurrentUploads: Int = 0
   ) {
     self.backendBaseURL = backendBaseURL
-    self.watchedFolders = watchedFolders
     self.maxArchiveBytes = maxArchiveBytes
     self.maxConcurrentUploads = maxConcurrentUploads
   }
@@ -57,7 +52,6 @@ public struct AgentConfiguration: Equatable, Sendable {
     }
     return AgentConfiguration(
       backendBaseURL: document.backendBaseURL,
-      watchedFolders: document.watchedFolders,
       maxArchiveBytes: document.maxArchiveBytes,
       maxConcurrentUploads: document.maxConcurrentUploads
     )
@@ -78,7 +72,6 @@ enum DocumentRejection: Error, CustomStringConvertible {
   case unknownField(String)
   case insecureBackendEndpoint(String)
   case nonPositiveValue(field: String, value: Int)
-  case emptyWatchedFolderEntry(index: Int)
 
   var description: String {
     switch self {
@@ -92,8 +85,6 @@ enum DocumentRejection: Error, CustomStringConvertible {
       "backend endpoint must use https or plain http on a loopback host, got \(endpoint)"
     case .nonPositiveValue(let field, let value):
       "configuration field \"\(field)\" must be greater than zero, got \(value)"
-    case .emptyWatchedFolderEntry(let index):
-      "configuration field \"watchedFolders\" must not contain empty entries (first at index \(index))"
     }
   }
 }
@@ -102,14 +93,12 @@ enum DocumentRejection: Error, CustomStringConvertible {
 /// is read, so later schema versions never reach field decoding.
 private struct RawDocument: Decodable {
   var backendBaseURL: URL?
-  var watchedFolders: [String]
   var maxArchiveBytes: Int
   var maxConcurrentUploads: Int
 
   private enum CodingKeys: String, CodingKey {
     case schemaVersion
     case backendBaseURL
-    case watchedFolders
     case maxArchiveBytes
     case maxConcurrentUploads
   }
@@ -124,7 +113,6 @@ private struct RawDocument: Decodable {
     let knownFieldNames: Set<String> = [
       CodingKeys.schemaVersion.stringValue,
       CodingKeys.backendBaseURL.stringValue,
-      CodingKeys.watchedFolders.stringValue,
       CodingKeys.maxArchiveBytes.stringValue,
       CodingKeys.maxConcurrentUploads.stringValue,
     ]
@@ -134,7 +122,6 @@ private struct RawDocument: Decodable {
       throw DocumentRejection.unknownField(unexpected.stringValue)
     }
     backendBaseURL = try container.decodeIfPresent(URL.self, forKey: .backendBaseURL)
-    watchedFolders = try container.decode([String].self, forKey: .watchedFolders)
     maxArchiveBytes = try container.decode(Int.self, forKey: .maxArchiveBytes)
     maxConcurrentUploads = try container.decode(Int.self, forKey: .maxConcurrentUploads)
     if maxArchiveBytes <= 0 {
@@ -143,9 +130,6 @@ private struct RawDocument: Decodable {
     if maxConcurrentUploads < 1 {
       throw DocumentRejection.nonPositiveValue(
         field: "maxConcurrentUploads", value: maxConcurrentUploads)
-    }
-    if let emptyIndex = watchedFolders.firstIndex(where: { $0.isEmpty }) {
-      throw DocumentRejection.emptyWatchedFolderEntry(index: emptyIndex)
     }
     if let endpoint = backendBaseURL, !Self.isPermittedBackendEndpoint(endpoint) {
       throw DocumentRejection.insecureBackendEndpoint(endpoint.absoluteString)
