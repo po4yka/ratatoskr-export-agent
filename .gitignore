@@ -36,3 +36,4 @@ xcuserdata/
 
 # Linked task worktrees
 .worktrees/
+.omo/
