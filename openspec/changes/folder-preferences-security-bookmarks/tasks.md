@@ -51,4 +51,4 @@ Each behaviour below lands as a pair: the first task adds a failing test (file, 
 ## 7. Ship
 
 - [x] 7.1 Commit the work on `feat/folder-preferences-security-bookmarks` as conventional commits grouped by concern (configuration break, preferences document, bookmark lifecycle, registry, settings surface, docs/gate). Verify: `git log` shows the grouped history and the worktree diff is fully committed.
-- [ ] 7.2 Merge into `main`, push `origin main`, then remove the worktree and delete the feature branch. Verify: remote `main` contains the merge commit; `git worktree list` and the branch list no longer contain this task's entries.
+- [x] 7.2 Merge into `main`, push `origin main`, then remove the worktree and delete the feature branch. Verify: remote `main` contains the merge commit; `git worktree list` and the branch list no longer contain this task's entries.
