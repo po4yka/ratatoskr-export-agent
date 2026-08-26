@@ -30,7 +30,7 @@ Each behaviour below lands as a pair: the first task adds a failing test (file, 
 
 ## 5. Documentation and full gate
 
-- [ ] 5.1 Update README status block and docs references: fingerprinting, shallow classification, immutable local archive, atomic publication, and disk budget exist; journal, upload, Keychain, notifications remain future work. Documentation change, no failing test applies. Verify: status block matches this change's scope with no overclaim.
+- [x] 5.1 Update README status block and docs references: fingerprinting, shallow classification, immutable local archive, atomic publication, and disk budget exist; journal, upload, Keychain, notifications remain future work. Documentation change, no failing test applies. Verify: status block matches this change's scope with no overclaim.
 - [ ] 5.2 Run the complete gate: `swift build`, `swift test`, `swift build -c release`, `.build/release/RatatoskrExportAgent --smoke`, `swiftlint`, `openspec validate --all --strict`, and `openspec validate --archived`, all green. This is the cross-cutting verification task spanning all groups above. Record observed counts in this task.
 
 ## 6. Ship
