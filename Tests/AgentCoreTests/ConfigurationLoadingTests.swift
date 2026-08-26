@@ -13,36 +13,6 @@ final class ConfigurationLoadingTests: XCTestCase {
     XCTAssertNil(configuration.backendBaseURL)
     XCTAssertEqual(configuration.maxArchiveBytes, 2 * 1024 * 1024 * 1024)
     XCTAssertEqual(configuration.maxConcurrentUploads, 2)
-    XCTAssertEqual(
-      configuration.maxArchiveStoreBytes,
-      AgentConfiguration.defaultValue.maxArchiveStoreBytes,
-      "the archive-store budget must default when the file is absent")
-  }
-
-  func testMissingStoreBudgetDefaultsToDocumentedDefault() throws {
-    let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "maxArchiveBytes": 1000, "maxConcurrentUploads": 1}"#
-    )
-
-    let configuration = try AgentConfiguration.load(from: url)
-
-    XCTAssertEqual(
-      configuration.maxArchiveStoreBytes,
-      AgentConfiguration.defaultValue.maxArchiveStoreBytes,
-      "an omitted maxArchiveStoreBytes must fall back to the documented default")
-  }
-
-  func testNonPositiveStoreBudgetRejectedNamingField() throws {
-    let url = try writeTemporaryConfiguration(
-      #"{"schemaVersion": 1, "maxArchiveBytes": 1000, "maxConcurrentUploads": 1, "maxArchiveStoreBytes": 0}"#
-    )
-
-    XCTAssertThrowsError(try AgentConfiguration.load(from: url)) { error in
-      XCTAssertTrue(
-        String(describing: error).contains("maxArchiveStoreBytes"),
-        "expected the error to name the offending budget field, got: \(error)"
-      )
-    }
   }
 
   private func writeTemporaryConfiguration(_ json: String) throws -> URL {

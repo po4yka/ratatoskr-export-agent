@@ -111,8 +111,7 @@ public struct ArchiveClassifier: Sendable {
 
   private func classifyJsonish(at url: URL) -> ArchiveClassification {
     guard let head = readHead(url: url, count: jsonProbeBytes, fileSize: jsonProbeBytes),
-      firstMeaningfulByte(of: head).map({ $0 == UInt8(ascii: "{") || $0 == UInt8(ascii: "[") })
-        == true
+      Self.opensJSONValue(head)
     else {
       return ArchiveClassification(
         container: .unknown, provider: .unidentified, confidence: nil, matchedMarkers: [])
@@ -153,13 +152,15 @@ public struct ArchiveClassifier: Sendable {
     return observed
   }
 
-  private func firstMeaningfulByte(of data: Data) -> UInt8? {
-    for byte in data
-    where byte != UInt8(ascii: " ") && byte != UInt8(ascii: "\t")
-      && byte != UInt8(ascii: "\n") && byte != UInt8(ascii: "\r")
-    {
-      return byte
+  private static func opensJSONValue(_ data: Data) -> Bool {
+    for byte in data where !isJSONWhitespace(byte) {
+      return byte == UInt8(ascii: "{") || byte == UInt8(ascii: "[")
     }
-    return nil
+    return false
+  }
+
+  private static func isJSONWhitespace(_ byte: UInt8) -> Bool {
+    byte == UInt8(ascii: " ") || byte == UInt8(ascii: "\t") || byte == UInt8(ascii: "\n")
+      || byte == UInt8(ascii: "\r")
   }
 }

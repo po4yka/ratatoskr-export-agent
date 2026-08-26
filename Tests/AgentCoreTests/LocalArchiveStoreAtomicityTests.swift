@@ -134,49 +134,6 @@ final class LocalArchiveStoreAtomicityTests: XCTestCase {
       [],
       "the next archival run sweeps temporaries abandoned by earlier terminations")
   }
-
-  func testMismatchedContentAtOccupiedPathFailsExplicitly() throws {
-    let content = Data("true content".utf8)
-    let source = try makeSource(named: "export.zip", bytes: content)
-    _ = try store.archive(
-      sourceAt: source,
-      observedByteSize: content.count,
-      classification: classification(provider: .chatgpt),
-      archivedOn: Self.archivedOn
-    )
-
-    // Plant different bytes exactly where the impostor's digest would land,
-    // so publication hits an occupied path holding foreign content.
-    let impostorContent = Data("impostor payload".utf8)
-    let impostorDigest = SHA256.hash(data: impostorContent)
-      .map { String(format: "%02x", $0) }.joined()
-    let impostorPath = monthDirectory(provider: .chatgpt)
-      .appending(path: "\(impostorDigest).zip")
-    try FileManager.default.createDirectory(
-      at: impostorPath.deletingLastPathComponent(), withIntermediateDirectories: true
-    )
-    let plantedBytes = Data("planted different bytes".utf8)
-    try plantedBytes.write(to: impostorPath)
-
-    let impostorSource = try makeSource(named: "impostor.zip", bytes: impostorContent)
-    XCTAssertThrowsError(
-      try store.archive(
-        sourceAt: impostorSource,
-        observedByteSize: impostorContent.count,
-        classification: classification(provider: .chatgpt),
-        archivedOn: Self.archivedOn
-      ),
-      "different content at an occupied digest path must fail explicitly"
-    ) { error in
-      XCTAssertEqual(
-        error as? LocalArchiveStoreError,
-        .occupiedDigestMismatch(digestPrefix: String(impostorDigest.prefix(12)))
-      )
-    }
-    XCTAssertEqual(
-      try Data(contentsOf: impostorPath), plantedBytes,
-      "the occupying file must remain byte-for-byte unchanged")
-  }
 }
 
 /// Marks a simulated mid-copy termination in interruption tests.

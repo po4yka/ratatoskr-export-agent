@@ -31,6 +31,13 @@ struct ProviderMarkerRow: Sendable {
   let required: Set<ArchiveMarker>
 }
 
+/// The outcome of matching observed markers against provider rows.
+struct MarkerVerdict: Equatable, Sendable {
+  let provider: ArchiveProviderHint
+  let confidence: ClassificationConfidence?
+  let matched: [String]
+}
+
 /// The classifier's marker tables. Isolated here so refining evidence
 /// against real exports is a single-file change.
 enum ArchiveMarkerTable {
@@ -75,39 +82,35 @@ enum ArchiveMarkerTable {
     }
   }
 
+  /// The outcome of matching observed markers against provider rows.
+  struct MarkerVerdict: Equatable, Sendable {
+    let provider: ArchiveProviderHint
+    let confidence: ClassificationConfidence?
+    let matched: [String]
+  }
+
   /// Labels observed markers against the rows: exactly one fully matched row
   /// is strong; partials confined to one provider are probable; anything
   /// spanning several providers is ambiguous rather than a guess.
   static func label(
     observed: Set<ArchiveMarker>,
     rows: [ProviderMarkerRow]
-  ) -> (provider: ArchiveProviderHint, confidence: ClassificationConfidence?, matched: [String]) {
+  ) -> MarkerVerdict {
     let fulls = rows.filter { observed.isSuperset(of: $0.required) }
     if fulls.count == 1, let full = fulls.first {
-      return (
-        provider: full.provider,
-        confidence: .strong,
-        matched: evidence(observed: observed)
-      )
+      return MarkerVerdict(
+        provider: full.provider, confidence: .strong, matched: evidence(observed: observed))
     }
-    if fulls.count > 1 {
-      return (
-        provider: .unidentified, confidence: .ambiguous, matched: evidence(observed: observed)
-      )
+    let partials = rows.filter { !$0.required.isDisjoint(with: observed) }
+    if fulls.count > 1 || partials.count > 1 {
+      return MarkerVerdict(
+        provider: .unidentified, confidence: .ambiguous, matched: evidence(observed: observed))
     }
-    let partials = rows.filter { row in
-      !row.required.intersection(observed).isEmpty
+    if let partial = partials.first {
+      return MarkerVerdict(
+        provider: partial.provider, confidence: .probable, matched: evidence(observed: observed))
     }
-    let providers = Set(partials.map(\.provider))
-    guard providers.count == 1, let provider = partials.first?.provider else {
-      if partials.count > 1 {
-        return (
-          provider: .unidentified, confidence: .ambiguous, matched: evidence(observed: observed)
-        )
-      }
-      return (provider: .unidentified, confidence: nil, matched: [])
-    }
-    return (provider: provider, confidence: .probable, matched: evidence(observed: observed))
+    return MarkerVerdict(provider: .unidentified, confidence: nil, matched: [])
   }
 
   private static func evidence(observed: Set<ArchiveMarker>) -> [String] {

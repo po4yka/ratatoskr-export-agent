@@ -80,28 +80,6 @@ public struct ConfigurationLoadError: Error, CustomStringConvertible, Sendable {
   }
 }
 
-enum DocumentRejection: Error, CustomStringConvertible {
-  case unsupportedSchemaVersion(Int?)
-  case unknownField(String)
-  case insecureBackendEndpoint(String)
-  case nonPositiveValue(field: String, value: Int)
-
-  var description: String {
-    switch self {
-    case .unsupportedSchemaVersion(.some(let actual)):
-      "only schema version 1 is supported, found \(actual)"
-    case .unsupportedSchemaVersion(.none):
-      "only schema version 1 is supported, none declared"
-    case .unknownField(let name):
-      "unknown configuration field \"\(name)\""
-    case .insecureBackendEndpoint(let endpoint):
-      "backend endpoint must use https or plain http on a loopback host, got \(endpoint)"
-    case .nonPositiveValue(let field, let value):
-      "configuration field \"\(field)\" must be greater than zero, got \(value)"
-    }
-  }
-}
-
 /// Decode shape enforcing the schema-version gate before any other field
 /// is read, so later schema versions never reach field decoding.
 private struct RawDocument: Decodable {
@@ -143,20 +121,20 @@ private struct RawDocument: Decodable {
     maxArchiveStoreBytes = try container.decodeIfPresent(
       Int.self, forKey: .maxArchiveStoreBytes
     )
-    if maxArchiveBytes <= 0 {
-      throw DocumentRejection.nonPositiveValue(field: "maxArchiveBytes", value: maxArchiveBytes)
-    }
-    if maxConcurrentUploads < 1 {
-      throw DocumentRejection.nonPositiveValue(
-        field: "maxConcurrentUploads", value: maxConcurrentUploads)
-    }
-    let storeBudget = maxArchiveStoreBytes ?? AgentConfiguration.defaultMaxArchiveStoreBytes
-    if storeBudget <= 0 {
-      throw DocumentRejection.nonPositiveValue(
-        field: "maxArchiveStoreBytes", value: storeBudget)
-    }
+    try Self.requirePositive(maxArchiveBytes, name: "maxArchiveBytes")
+    try Self.requirePositive(maxConcurrentUploads, name: "maxConcurrentUploads")
+    try Self.requirePositive(
+      maxArchiveStoreBytes ?? AgentConfiguration.defaultMaxArchiveStoreBytes,
+      name: "maxArchiveStoreBytes"
+    )
     if let endpoint = backendBaseURL, !Self.isPermittedBackendEndpoint(endpoint) {
       throw DocumentRejection.insecureBackendEndpoint(endpoint.absoluteString)
+    }
+  }
+
+  private static func requirePositive(_ value: Int, name: String) throws {
+    if value <= 0 {
+      throw DocumentRejection.nonPositiveValue(field: name, value: value)
     }
   }
 

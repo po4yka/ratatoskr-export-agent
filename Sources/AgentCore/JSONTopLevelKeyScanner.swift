@@ -82,13 +82,10 @@ enum JSONTopLevelKeyScanner {
       defer {
         position = min(position + 1, bytes.count)
       }
+      let key = String(bytes: bytes[start..<position], encoding: .utf8) ?? ""
       if objectDepth == 1, isFollowedByColon(from: position + 1),
-        keys.count < JSONTopLevelKeyScanner.maxKeys
-      {
-        let key = String(decoding: bytes[start..<position], as: UTF8.self)
-        if !keys.contains(key) {
-          keys.append(key)
-        }
+        keys.count < JSONTopLevelKeyScanner.maxKeys, !keys.contains(key) {
+        keys.append(key)
       }
     }
 

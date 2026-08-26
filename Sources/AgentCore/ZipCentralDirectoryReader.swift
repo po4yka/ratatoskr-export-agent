@@ -35,7 +35,7 @@ enum ZipCentralDirectoryReader {
     let tailStart = max(0, fileSize - windowSize)
     let tail = try handle.readChunk(
       fromAbsoluteOffset: UInt64(tailStart), count: fileSize - tailStart)
-    guard var cursor = locateEOCD(in: tail) else {
+    guard let cursor = locateEOCD(in: tail) else {
       return .notFound()
     }
     let entryCount = Int(readLE16(tail, at: cursor + 10))
@@ -85,7 +85,8 @@ enum ZipCentralDirectoryReader {
       guard nameEnd + extraLength + commentLength <= directory.count else {
         break
       }
-      names.append(String(decoding: directory[(offset + 46)..<nameEnd], as: UTF8.self))
+      let name = String(bytes: directory[(offset + 46)..<nameEnd], encoding: .utf8) ?? ""
+      names.append(name)
       offset = nameEnd + extraLength + commentLength
     }
     return ZipCentralDirectoryListing(foundDirectory: true, entryNames: names)

@@ -75,8 +75,17 @@ final class LocalArchiveStoreBudgetTests: XCTestCase {
         .overBudget(currentBytes: 700, incomingBytes: 400, limitBytes: 1_000),
         "the refusal names current usage, the incoming size, and the limit")
     }
+    try assertRefusalLeftNoTrace(preserved: preserved, original: first)
+  }
+
+  /// A refusal leaves the original, the earlier preserved copy, the store
+  /// total, and the temporary namespace exactly as they were.
+  private func assertRefusalLeftNoTrace(
+    preserved: LocalArchiveRecord,
+    original: URL
+  ) throws {
     XCTAssertTrue(
-      FileManager.default.fileExists(atPath: first.path),
+      FileManager.default.fileExists(atPath: original.path),
       "refusal must not touch the user's original")
     XCTAssertTrue(
       FileManager.default.fileExists(atPath: preserved.url.path),
