@@ -3,7 +3,7 @@
 > Status: Proposed  
 > Last reviewed: 2026-08-20
 
-Architecture bootstrap: the macOS app/background component, watcher, journal, Keychain integration, uploader, signing, and update flow are not implemented.
+The bootstrap now includes folder watching, local archive/journal primitives, and Platform device pairing. Upload, reminders, background distribution, signing, and update flow remain unimplemented.
 
 ## Intended toolchain
 
@@ -22,6 +22,14 @@ SwiftLint carries the size limits through the committed `.swiftlint.yml`; it ins
 3. Hash by streaming, preserve the original immutably, and journal every transition before network upload.
 4. Use registered-device credentials from Keychain and idempotent/resumable upload.
 5. Test crash/restart, offline, duplicate, partial file, permission loss, low disk, and revocation.
+
+## Platform device pairing evidence
+
+The agent pairs only by exchanging a user-provided code that was approved from a primary Platform session. It sends kind `export_agent` to the configured HTTPS origin; it never automates provider login or uses provider credentials.
+
+The device root secret, bearer credential, and rotating refresh token are held together in a non-synchronizable, device-only macOS Keychain record. Configuration and the journal may hold only origin/device/status metadata. A refresh refusal attempts one device-root recovery; a second refusal clears the Keychain record and puts the agent into re-pairing-required state without touching local archives.
+
+`DeviceCredentialStoreTests.testMacOSKeychainRoundTripAndDelete` is opt-in because a headless CI runner may not grant Keychain access. Run it on a Keychain-capable macOS runner with `RATATOSKR_KEYCHAIN_INTEGRATION=1 build-gate -- swift test --filter DeviceCredentialStoreTests.testMacOSKeychainRoundTripAndDelete`; without that environment value it skips with this exact evidence reason while deterministic injected-store coverage remains mandatory.
 
 The first scaffold PR must document exact Xcode/SwiftPM, test, sandbox, signing, notarization, and local-server commands. The app never needs ChatGPT/Claude passwords or cookies.
 
