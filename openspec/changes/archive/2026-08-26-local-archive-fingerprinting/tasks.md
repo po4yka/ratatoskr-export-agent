@@ -35,5 +35,5 @@ Each behaviour below lands as a pair: the first task adds a failing test (file, 
 
 ## 6. Ship
 
-- [ ] 6.1 Commit the work on `feat/local-archive-fingerprinting` as conventional commits grouped by concern (streaming hash, classifier, archive store, budget/configuration, docs/gate). Verify: `git log` shows the grouped history and the worktree diff is fully committed.
-- [ ] 6.2 Merge into `main`, push `origin main`, then remove the worktree and delete the feature branch. Verify: remote `main` contains the merge commit; `git worktree list` and the branch list no longer contain this task's entries.
+- [x] 6.1 Commit the work on `feat/local-archive-fingerprinting` as conventional commits grouped by concern (streaming hash, classifier, archive store, budget/configuration, docs/gate). Verified: `git log` shows the grouped history and the worktree diff is fully committed.
+- [x] 6.2 Merge into `main`, push `origin main`, then remove the worktree and delete the feature branch. Verified: remote `main` contains `e9b6483288dde67187b25ae216d1fc5b7b893c3d`; `git worktree list` and the branch list no longer contain this task's entries.
