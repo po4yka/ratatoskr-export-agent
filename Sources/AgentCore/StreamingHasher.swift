@@ -3,7 +3,7 @@ import Foundation
 
 /// The content identity of one archived candidate: lowercase hex SHA-256
 /// digest plus the exact byte count hashed.
-public struct ArchiveFingerprint: Equatable, Sendable {
+public struct ArchiveFingerprint: Codable, Equatable, Sendable {
   /// Lowercase hexadecimal SHA-256 of the hashed bytes.
   public let sha256Hex: String
 
