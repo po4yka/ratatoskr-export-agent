@@ -22,4 +22,4 @@ before its implementation task is marked complete.
 ## 4. Full gate and ship
 
 - [x] 4.1 Run `build-gate -- swift build`, `build-gate -- swift test`, `build-gate -- swift build -c release`, `.build/release/RatatoskrExportAgent --smoke`, `swiftlint`, `openspec validate --all --strict`, and `openspec validate --archived`. Observed: debug and release builds passed, smoke exited 0, 108 tests / 0 failures, SwiftLint 0 violations, strict validation 9/0, archived validation 2/0.
-- [ ] 4.2 Commit the focused change on `feat/durable-local-journal-crash-recovery`, merge it into `main`, push `origin main`, and remove this worktree and branch only after the remote main contains the merge.
+- [x] 4.2 Commit the focused change on `feat/durable-local-journal-crash-recovery`, merge it into `main`, push `origin main`, and remove this worktree and branch only after the remote main contains the merge. Observed: `117c4cd` merged as `0b9ff14`, `origin/main` points at the merge, and the worktree/feature branch no longer exist.
