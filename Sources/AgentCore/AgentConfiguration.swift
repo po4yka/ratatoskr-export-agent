@@ -16,21 +16,32 @@ public struct AgentConfiguration: Equatable, Sendable {
   /// Maximum number of simultaneous uploads.
   public var maxConcurrentUploads: Int
 
+  /// Maximum total bytes the immutable local archive store may hold.
+  public var maxArchiveStoreBytes: Int
+
   /// Documented defaults applied when no configuration file exists: no
   /// backend URL yet, a 2 GiB archive ceiling, and up to two concurrent
   /// uploads.
+  /// Documented default store budget applied when the field is absent.
+  public static let defaultMaxArchiveStoreBytes = 20 * 1024 * 1024 * 1024
+
   public static let defaultValue = AgentConfiguration(
     backendBaseURL: nil,
     maxArchiveBytes: 2 * 1024 * 1024 * 1024,
-    maxConcurrentUploads: 2
+    maxConcurrentUploads: 2,
+    maxArchiveStoreBytes: Self.defaultMaxArchiveStoreBytes
   )
 
   public init(
-    backendBaseURL: URL? = nil, maxArchiveBytes: Int = 0, maxConcurrentUploads: Int = 0
+    backendBaseURL: URL? = nil,
+    maxArchiveBytes: Int = 0,
+    maxConcurrentUploads: Int = 0,
+    maxArchiveStoreBytes: Int = 0
   ) {
     self.backendBaseURL = backendBaseURL
     self.maxArchiveBytes = maxArchiveBytes
     self.maxConcurrentUploads = maxConcurrentUploads
+    self.maxArchiveStoreBytes = maxArchiveStoreBytes
   }
 
   /// Loads the configuration document at the given file URL.
@@ -53,7 +64,9 @@ public struct AgentConfiguration: Equatable, Sendable {
     return AgentConfiguration(
       backendBaseURL: document.backendBaseURL,
       maxArchiveBytes: document.maxArchiveBytes,
-      maxConcurrentUploads: document.maxConcurrentUploads
+      maxConcurrentUploads: document.maxConcurrentUploads,
+      maxArchiveStoreBytes: document.maxArchiveStoreBytes
+        ?? Self.defaultMaxArchiveStoreBytes
     )
   }
 }
@@ -95,12 +108,14 @@ private struct RawDocument: Decodable {
   var backendBaseURL: URL?
   var maxArchiveBytes: Int
   var maxConcurrentUploads: Int
+  var maxArchiveStoreBytes: Int?
 
   private enum CodingKeys: String, CodingKey {
     case schemaVersion
     case backendBaseURL
     case maxArchiveBytes
     case maxConcurrentUploads
+    case maxArchiveStoreBytes
   }
 
   init(from decoder: Decoder) throws {
@@ -115,6 +130,7 @@ private struct RawDocument: Decodable {
       CodingKeys.backendBaseURL.stringValue,
       CodingKeys.maxArchiveBytes.stringValue,
       CodingKeys.maxConcurrentUploads.stringValue,
+      CodingKeys.maxArchiveStoreBytes.stringValue,
     ]
     if let unexpected = rawContainer.allKeys.first(where: {
       !knownFieldNames.contains($0.stringValue)
@@ -124,12 +140,20 @@ private struct RawDocument: Decodable {
     backendBaseURL = try container.decodeIfPresent(URL.self, forKey: .backendBaseURL)
     maxArchiveBytes = try container.decode(Int.self, forKey: .maxArchiveBytes)
     maxConcurrentUploads = try container.decode(Int.self, forKey: .maxConcurrentUploads)
+    maxArchiveStoreBytes = try container.decodeIfPresent(
+      Int.self, forKey: .maxArchiveStoreBytes
+    )
     if maxArchiveBytes <= 0 {
       throw DocumentRejection.nonPositiveValue(field: "maxArchiveBytes", value: maxArchiveBytes)
     }
     if maxConcurrentUploads < 1 {
       throw DocumentRejection.nonPositiveValue(
         field: "maxConcurrentUploads", value: maxConcurrentUploads)
+    }
+    let storeBudget = maxArchiveStoreBytes ?? AgentConfiguration.defaultMaxArchiveStoreBytes
+    if storeBudget <= 0 {
+      throw DocumentRejection.nonPositiveValue(
+        field: "maxArchiveStoreBytes", value: storeBudget)
     }
     if let endpoint = backendBaseURL, !Self.isPermittedBackendEndpoint(endpoint) {
       throw DocumentRejection.insecureBackendEndpoint(endpoint.absoluteString)
