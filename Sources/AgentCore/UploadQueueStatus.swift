@@ -1,0 +1,57 @@
+import Foundation
+
+/// Privacy-safe projection used by UI surfaces; it never contains paths or digests.
+public struct UploadQueueStatus: Equatable, Sendable {
+  public let activeCount: Int
+  public let activeCompletedBytes: Int
+  public let activeTotalBytes: Int
+  public let queuedCount: Int
+  public let pausedCount: Int
+  public let retryingCount: Int
+  public let failedCount: Int
+
+  public init(entries: [JournalEntry], now: Date = Date()) {
+    let activeEntries = entries.filter { $0.state == .uploading }
+    activeCount = activeEntries.count
+    activeCompletedBytes = activeEntries.reduce(0) { partial, entry in
+      partial + Self.acknowledgedBytes(for: entry)
+    }
+    activeTotalBytes = activeEntries.reduce(0) { $0 + $1.fingerprint.byteSize }
+    pausedCount = entries.filter { $0.uploadCheckpoint?.control == .paused }.count
+    failedCount = entries.filter { $0.uploadCheckpoint?.control == .failed }.count
+    queuedCount = entries.filter {
+      $0.state == .queued && ($0.uploadCheckpoint?.control ?? .active) == .active
+    }.count
+    retryingCount = entries.filter {
+      $0.state == .queued && ($0.uploadCheckpoint?.control ?? .active) == .active &&
+        ($0.uploadCheckpoint?.nextRetryAt ?? now) > now
+    }.count
+  }
+
+  public var menuTitle: String {
+    if activeCount > 0 {
+      let percent = activeTotalBytes == 0 ? 0 : activeCompletedBytes * 100 / activeTotalBytes
+      return "Uploading \(activeCount) archive\(activeCount == 1 ? "" : "s") (\(percent)%)"
+    }
+    if retryingCount > 0 {
+      return "\(retryingCount) upload retry queued"
+    }
+    if pausedCount > 0 {
+      return "\(pausedCount) upload\(pausedCount == 1 ? "" : "s") paused"
+    }
+    if failedCount > 0 {
+      return "\(failedCount) upload\(failedCount == 1 ? "" : "s") need attention"
+    }
+    return queuedCount > 0 ? "\(queuedCount) upload\(queuedCount == 1 ? "" : "s") queued" : "No uploads queued"
+  }
+
+  private static func acknowledgedBytes(for entry: JournalEntry) -> Int {
+    guard let checkpoint = entry.uploadCheckpoint else { return 0 }
+    return checkpoint.acknowledgedIndices.reduce(0) { partial, index in
+      guard index >= 0 else { return partial }
+      let offset = index * checkpoint.chunkSizeBytes
+      guard offset < entry.fingerprint.byteSize else { return partial }
+      return partial + min(checkpoint.chunkSizeBytes, entry.fingerprint.byteSize - offset)
+    }
+  }
+}

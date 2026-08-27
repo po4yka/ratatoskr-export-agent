@@ -20,7 +20,8 @@ let package = Package(
     ),
     .testTarget(
       name: "AgentCoreTests",
-      dependencies: ["AgentCore"]
+      dependencies: ["AgentCore"],
+      resources: [.copy("Fixtures")]
     ),
     .testTarget(
       name: "AgentLogTests",

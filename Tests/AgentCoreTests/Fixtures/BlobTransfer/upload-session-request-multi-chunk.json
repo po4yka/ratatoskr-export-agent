@@ -1,0 +1,9 @@
+{
+  "declared_size_bytes": 200000,
+  "media_type": "application/zip",
+  "digest": {
+    "algorithm": "sha256",
+    "hex": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "chunk_size_bytes": 1048576
+}

@@ -3,7 +3,7 @@
 > Status: Proposed  
 > Last reviewed: 2026-08-20
 
-The bootstrap now includes folder watching, local archive/journal primitives, and Platform device pairing. Upload, reminders, background distribution, signing, and update flow remain unimplemented.
+The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing, and a journal-backed resumable upload queue verified against fixed blob-transfer fixtures and an in-process harness. Authenticated Platform/receiver integration, reminders, background distribution, signing, and update flow remain pending.
 
 ## Intended toolchain
 
@@ -22,6 +22,12 @@ SwiftLint carries the size limits through the committed `.swiftlint.yml`; it ins
 3. Hash by streaming, preserve the original immutably, and journal every transition before network upload.
 4. Use registered-device credentials from Keychain and idempotent/resumable upload.
 5. Test crash/restart, offline, duplicate, partial file, permission loss, low disk, and revocation.
+
+## Resumable upload status
+
+`UploadQueue` holds the durable scheduler-to-uploader link: it streams one configured chunk at a time from the managed local archive, writes every receiver acknowledgement to the journal, resumes a recorded session by querying its status, and uses the SHA-256-derived journal identity on every open attempt. Retryable transport failures receive bounded backoff; permanent failures stop until an explicit retry. The queue admits upload slots and bytes before reading each chunk, and publishes only redacted state/progress for `UploadMenuStatusBinding`.
+
+The fixed blob-transfer fixture and in-process harness are local contract evidence, not live proof. The authenticated Platform edge and receiving-service run remains pending until those services expose their configured binding.
 
 ## Platform device pairing evidence
 

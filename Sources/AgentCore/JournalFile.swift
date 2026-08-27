@@ -4,6 +4,7 @@ import Foundation
 enum JournalRecordKind: String, Codable {
   case transition
   case recovery
+  case checkpoint
   case snapshot
 }
 
@@ -18,6 +19,10 @@ struct JournalRecord: Codable {
 
   static func recovery(_ entry: JournalEntry) -> JournalRecord {
     JournalRecord(kind: .recovery, entry: entry, entries: nil)
+  }
+
+  static func checkpoint(_ entry: JournalEntry) -> JournalRecord {
+    JournalRecord(kind: .checkpoint, entry: entry, entries: nil)
   }
 
   static func snapshot(_ entries: [JournalEntry]) -> JournalRecord {
@@ -56,7 +61,7 @@ enum JournalFile {
     var projection: [UUID: JournalEntry] = [:]
     for line in try lines(in: data) {
       do {
-        try apply(try decodedRecord(from: line), to: &projection)
+        try apply(decodedRecord(from: line), to: &projection)
       } catch let error as LocalJournalError {
         throw error
       } catch {
@@ -85,7 +90,8 @@ enum JournalFile {
       throw LocalJournalError.safeStop(.malformedRecord)
     }
     guard let payload = Data(base64Encoded: envelope.payloadBase64),
-      checksum(for: payload) == envelope.checksum else {
+          checksum(for: payload) == envelope.checksum
+    else {
       throw LocalJournalError.safeStop(.checksumMismatch)
     }
     do {
@@ -104,7 +110,8 @@ enum JournalFile {
     }
     guard let previous = projection[entry.id] else {
       guard record.kind == .transition, entry.state == .discovered,
-        !projection.values.contains(where: { $0.fingerprint == entry.fingerprint }) else {
+            !projection.values.contains(where: { $0.fingerprint == entry.fingerprint })
+      else {
         throw LocalJournalError.safeStop(.impossibleTransition)
       }
       projection[entry.id] = entry
@@ -116,7 +123,9 @@ enum JournalFile {
       previous.state.allowsTransition(toward: entry.state)
     let recoveryTransition = record.kind == .recovery && previous.state == .uploading &&
       entry.state == .queued
-    guard keepsIdentity && (normalTransition || recoveryTransition) else {
+    let checkpointTransition = record.kind == .checkpoint && previous.state == entry.state &&
+      (entry.state == .queued || entry.state == .uploading)
+    guard keepsIdentity, normalTransition || recoveryTransition || checkpointTransition else {
       throw LocalJournalError.safeStop(.impossibleTransition)
     }
     projection[entry.id] = entry
@@ -128,7 +137,8 @@ enum JournalFile {
     }
     for entry in entries {
       guard JournalIdentity.matches(entry), projection[entry.id] == nil,
-        !projection.values.contains(where: { $0.fingerprint == entry.fingerprint }) else {
+            !projection.values.contains(where: { $0.fingerprint == entry.fingerprint })
+      else {
         throw LocalJournalError.safeStop(.impossibleTransition)
       }
       projection[entry.id] = entry
@@ -143,7 +153,7 @@ enum JournalFile {
       guard start < index else {
         throw LocalJournalError.safeStop(.malformedRecord)
       }
-      lines.append(Data(bytes[start..<index]))
+      lines.append(Data(bytes[start ..< index]))
       start = index + 1
     }
     return lines

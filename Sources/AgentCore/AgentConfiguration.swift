@@ -16,6 +16,12 @@ public struct AgentConfiguration: Equatable, Sendable {
   /// Maximum number of simultaneous uploads.
   public var maxConcurrentUploads: Int
 
+  /// Fixed receipt-protocol chunk size used for streamed archive bodies.
+  public var uploadChunkBytes: Int
+
+  /// Aggregate queue admission budget, in bytes per scheduler tick.
+  public var maxUploadBytesPerSecond: Int
+
   /// Maximum total bytes the immutable local archive store may hold.
   public var maxArchiveStoreBytes: Int
 
@@ -24,11 +30,18 @@ public struct AgentConfiguration: Equatable, Sendable {
   /// uploads.
   /// Documented default store budget applied when the field is absent.
   public static let defaultMaxArchiveStoreBytes = 20 * 1024 * 1024 * 1024
+  public static let defaultUploadChunkBytes = 1_048_576
+  public static let defaultMaxUploadBytesPerSecond = 8 * 1_048_576
+  public static let minimumUploadChunkBytes = 65536
+  public static let maximumUploadChunkBytes = 16 * 1_048_576
+  public static let maximumUploadBytesPerSecond = 128 * 1_048_576
 
   public static let defaultValue = AgentConfiguration(
     backendBaseURL: nil,
     maxArchiveBytes: 2 * 1024 * 1024 * 1024,
     maxConcurrentUploads: 2,
+    uploadChunkBytes: Self.defaultUploadChunkBytes,
+    maxUploadBytesPerSecond: Self.defaultMaxUploadBytesPerSecond,
     maxArchiveStoreBytes: Self.defaultMaxArchiveStoreBytes
   )
 
@@ -36,11 +49,15 @@ public struct AgentConfiguration: Equatable, Sendable {
     backendBaseURL: URL? = nil,
     maxArchiveBytes: Int = 0,
     maxConcurrentUploads: Int = 0,
+    uploadChunkBytes: Int = AgentConfiguration.defaultUploadChunkBytes,
+    maxUploadBytesPerSecond: Int = AgentConfiguration.defaultMaxUploadBytesPerSecond,
     maxArchiveStoreBytes: Int = 0
   ) {
     self.backendBaseURL = backendBaseURL
     self.maxArchiveBytes = maxArchiveBytes
     self.maxConcurrentUploads = maxConcurrentUploads
+    self.uploadChunkBytes = uploadChunkBytes
+    self.maxUploadBytesPerSecond = maxUploadBytesPerSecond
     self.maxArchiveStoreBytes = maxArchiveStoreBytes
   }
 
@@ -65,6 +82,8 @@ public struct AgentConfiguration: Equatable, Sendable {
       backendBaseURL: document.backendBaseURL,
       maxArchiveBytes: document.maxArchiveBytes,
       maxConcurrentUploads: document.maxConcurrentUploads,
+      uploadChunkBytes: document.uploadChunkBytes,
+      maxUploadBytesPerSecond: document.maxUploadBytesPerSecond,
       maxArchiveStoreBytes: document.maxArchiveStoreBytes
         ?? Self.defaultMaxArchiveStoreBytes
     )
@@ -77,93 +96,5 @@ public struct ConfigurationLoadError: Error, CustomStringConvertible, Sendable {
 
   public var description: String {
     "\(fileURL.path): \(reason)"
-  }
-}
-
-/// Decode shape enforcing the schema-version gate before any other field
-/// is read, so later schema versions never reach field decoding.
-private struct RawDocument: Decodable {
-  var backendBaseURL: URL?
-  var maxArchiveBytes: Int
-  var maxConcurrentUploads: Int
-  var maxArchiveStoreBytes: Int?
-
-  private enum CodingKeys: String, CodingKey {
-    case schemaVersion
-    case backendBaseURL
-    case maxArchiveBytes
-    case maxConcurrentUploads
-    case maxArchiveStoreBytes
-  }
-
-  init(from decoder: Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    let declaredVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion)
-    guard declaredVersion == 1 else {
-      throw DocumentRejection.unsupportedSchemaVersion(declaredVersion)
-    }
-    let rawContainer = try decoder.container(keyedBy: AnyCodingKey.self)
-    let knownFieldNames: Set<String> = [
-      CodingKeys.schemaVersion.stringValue,
-      CodingKeys.backendBaseURL.stringValue,
-      CodingKeys.maxArchiveBytes.stringValue,
-      CodingKeys.maxConcurrentUploads.stringValue,
-      CodingKeys.maxArchiveStoreBytes.stringValue,
-    ]
-    if let unexpected = rawContainer.allKeys.first(where: {
-      !knownFieldNames.contains($0.stringValue)
-    }) {
-      throw DocumentRejection.unknownField(unexpected.stringValue)
-    }
-    backendBaseURL = try container.decodeIfPresent(URL.self, forKey: .backendBaseURL)
-    maxArchiveBytes = try container.decode(Int.self, forKey: .maxArchiveBytes)
-    maxConcurrentUploads = try container.decode(Int.self, forKey: .maxConcurrentUploads)
-    maxArchiveStoreBytes = try container.decodeIfPresent(
-      Int.self, forKey: .maxArchiveStoreBytes
-    )
-    try Self.requirePositive(maxArchiveBytes, name: "maxArchiveBytes")
-    try Self.requirePositive(maxConcurrentUploads, name: "maxConcurrentUploads")
-    try Self.requirePositive(
-      maxArchiveStoreBytes ?? AgentConfiguration.defaultMaxArchiveStoreBytes,
-      name: "maxArchiveStoreBytes"
-    )
-    if let endpoint = backendBaseURL, !Self.isPermittedBackendEndpoint(endpoint) {
-      throw DocumentRejection.insecureBackendEndpoint(endpoint.absoluteString)
-    }
-  }
-
-  private static func requirePositive(_ value: Int, name: String) throws {
-    if value <= 0 {
-      throw DocumentRejection.nonPositiveValue(field: name, value: value)
-    }
-  }
-
-  private static func isPermittedBackendEndpoint(_ url: URL) -> Bool {
-    guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else {
-      return false
-    }
-    if scheme == "https" {
-      return true
-    }
-    var host = url.host ?? ""
-    if host.hasPrefix("["), host.hasSuffix("]"), host.count >= 2 {
-      host = String(host.dropFirst().dropLast())
-    }
-    return host == "localhost" || host == "127.0.0.1" || host == "::1"
-  }
-}
-
-private struct AnyCodingKey: CodingKey {
-  let stringValue: String
-  let intValue: Int?
-
-  init?(stringValue: String) {
-    self.stringValue = stringValue
-    intValue = nil
-  }
-
-  init?(intValue: Int) {
-    stringValue = String(intValue)
-    self.intValue = intValue
   }
 }

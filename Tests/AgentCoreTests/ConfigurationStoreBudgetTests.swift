@@ -7,7 +7,8 @@ final class ConfigurationStoreBudgetTests: XCTestCase {
   private func writeTemporaryConfiguration(_ json: String) throws -> URL {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent("ratatoskr-config-\(UUID().uuidString).json")
-    try Data(json.utf8).write(to: url)
+    let document = json.dropLast() + ", \"uploadChunkBytes\": 65536, \"maxUploadBytesPerSecond\": 1048576}"
+    try Data(document.utf8).write(to: url)
     return url
   }
 
@@ -21,7 +22,8 @@ final class ConfigurationStoreBudgetTests: XCTestCase {
     XCTAssertEqual(
       configuration.maxArchiveStoreBytes,
       AgentConfiguration.defaultValue.maxArchiveStoreBytes,
-      "an omitted maxArchiveStoreBytes must fall back to the documented default")
+      "an omitted maxArchiveStoreBytes must fall back to the documented default"
+    )
   }
 
   func testNonPositiveStoreBudgetRejectedNamingField() throws {

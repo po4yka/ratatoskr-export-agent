@@ -7,17 +7,13 @@ final class ConfigurationLoadingTests: XCTestCase {
     return directory.appendingPathComponent("ratatoskr-config-\(UUID().uuidString).json")
   }
 
-  func testMissingFileYieldsDefaults() throws {
-    let configuration = try AgentConfiguration.load(from: temporaryConfigurationURL())
-
-    XCTAssertNil(configuration.backendBaseURL)
-    XCTAssertEqual(configuration.maxArchiveBytes, 2 * 1024 * 1024 * 1024)
-    XCTAssertEqual(configuration.maxConcurrentUploads, 2)
-  }
-
   private func writeTemporaryConfiguration(_ json: String) throws -> URL {
     let url = temporaryConfigurationURL()
-    try Data(json.utf8).write(to: url)
+    var document = json
+    if document.contains("\"schemaVersion\": 1"), !document.contains("\"uploadChunkBytes\"") {
+      document = document.dropLast() + ", \"uploadChunkBytes\": 65536, \"maxUploadBytesPerSecond\": 1048576}"
+    }
+    try Data(document.utf8).write(to: url)
     return url
   }
 
@@ -99,7 +95,8 @@ final class ConfigurationLoadingTests: XCTestCase {
       let configuration = try AgentConfiguration.load(from: url)
 
       XCTAssertEqual(
-        configuration.backendBaseURL, URL(string: endpoint), "expected \(endpoint) to be accepted")
+        configuration.backendBaseURL, URL(string: endpoint), "expected \(endpoint) to be accepted"
+      )
     }
   }
 

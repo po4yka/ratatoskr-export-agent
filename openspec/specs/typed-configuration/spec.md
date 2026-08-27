@@ -53,7 +53,7 @@ When the document omits `maxArchiveStoreBytes`, loading SHALL apply the document
 - **THEN** loading succeeds and the loaded configuration carries the documented default store budget
 
 ### Requirement: Budgets are present and positive
-`maxArchiveBytes` SHALL be greater than zero, `maxConcurrentUploads` SHALL be at least one, and `maxArchiveStoreBytes`, when present, SHALL be greater than zero; otherwise loading SHALL fail naming the offending budget.
+`maxArchiveBytes` SHALL be greater than zero, `maxConcurrentUploads` SHALL be at least one, and `maxArchiveStoreBytes`, when present, SHALL be greater than zero; otherwise loading SHALL fail naming the offending budget. The version-1 document SHALL also require positive `uploadChunkBytes` and `maxUploadBytesPerSecond` values that lie within documented protocol and local safety bounds.
 
 #### Scenario: Non-positive byte budget rejected
 - **WHEN** `maxArchiveBytes` is zero or negative
@@ -66,6 +66,10 @@ When the document omits `maxArchiveStoreBytes`, loading SHALL apply the document
 #### Scenario: Non-positive store budget rejected
 - **WHEN** `maxArchiveStoreBytes` is present and zero or negative
 - **THEN** loading fails and names `maxArchiveStoreBytes`
+
+#### Scenario: Invalid transfer cap rejected
+- **WHEN** `uploadChunkBytes` or `maxUploadBytesPerSecond` is zero, negative, or outside its documented bound
+- **THEN** loading fails and names the offending transfer field
 
 ### Requirement: Watched folder entries are usable
 Every `watchedFolders` entry SHALL be a non-empty string; loading SHALL fail on an empty entry.

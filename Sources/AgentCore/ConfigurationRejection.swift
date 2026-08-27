@@ -5,19 +5,25 @@ enum DocumentRejection: Error, CustomStringConvertible {
   case unknownField(String)
   case insecureBackendEndpoint(String)
   case nonPositiveValue(field: String, value: Int)
+  case outOfRangeValue(field: String, value: Int, minimum: Int, maximum: Int)
+  case incompatibleTransferCaps(chunkBytes: Int, bytesPerSecond: Int)
 
   var description: String {
     switch self {
-    case .unsupportedSchemaVersion(.some(let actual)):
+    case let .unsupportedSchemaVersion(.some(actual)):
       "only schema version 1 is supported, found \(actual)"
     case .unsupportedSchemaVersion(.none):
       "only schema version 1 is supported, none declared"
-    case .unknownField(let name):
+    case let .unknownField(name):
       "unknown configuration field \"\(name)\""
-    case .insecureBackendEndpoint(let endpoint):
+    case let .insecureBackendEndpoint(endpoint):
       "backend endpoint must use https or plain http on a loopback host, got \(endpoint)"
-    case .nonPositiveValue(let field, let value):
+    case let .nonPositiveValue(field, value):
       "configuration field \"\(field)\" must be greater than zero, got \(value)"
+    case let .outOfRangeValue(field, value, minimum, maximum):
+      "configuration field \"\(field)\" must be between \(minimum) and \(maximum), got \(value)"
+    case let .incompatibleTransferCaps(chunkBytes, bytesPerSecond):
+      "configuration field \"maxUploadBytesPerSecond\" must admit one uploadChunkBytes value; got \(bytesPerSecond) for chunk \(chunkBytes)"
     }
   }
 }
