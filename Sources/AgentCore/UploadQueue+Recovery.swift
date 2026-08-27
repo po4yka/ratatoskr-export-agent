@@ -9,6 +9,8 @@ extension UploadQueue {
     switch error {
     case BlobReceiptTransportError.unavailable:
       next = retryCheckpoint(from: checkpoint, at: now)
+    case PlatformDeviceTransportError.unavailable:
+      next = retryCheckpoint(from: checkpoint, at: now)
     case let BlobReceiptTransportError.retryAfter(retryAfter):
       next = retryCheckpoint(from: checkpoint, at: now, retryAfter: retryAfter)
     case BlobReceiptTransportError.expiredSession:
@@ -72,6 +74,9 @@ extension UploadQueue {
     guard entry.state == .queued, let path = entry.managedArchivePath, !path.isEmpty else {
       return false
     }
+    // A returned operation ID is a durable recovery key. Do not create or send a second upload
+    // while its authoritative Platform result can still be polled.
+    guard entry.backendImport == nil else { return false }
     guard (entry.uploadCheckpoint?.control ?? .active) == .active else { return false }
     return (entry.uploadCheckpoint?.nextRetryAt ?? .distantPast) <= now
   }

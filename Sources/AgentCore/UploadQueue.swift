@@ -4,7 +4,9 @@ import Foundation
 /// in memory and every receiver acknowledgement is checkpointed first.
 public actor UploadQueue {
   let journal: LocalArchiveJournal
-  let transport: any BlobReceiptTransport
+  let blobTransport: (any BlobReceiptTransport)?
+  let operationTransport: (any PlatformArchiveOperationTransport)?
+  let operationProvider: PlatformArchiveProvider?
   let retryPolicy: UploadRetryPolicy
   let limiter: UploadAdmissionLimiter
   let chunkSize: Int
@@ -18,7 +20,9 @@ public actor UploadQueue {
     chunkSize: Int
   ) {
     self.journal = journal
-    self.transport = transport
+    blobTransport = transport
+    operationTransport = nil
+    operationProvider = nil
     self.retryPolicy = retryPolicy
     self.limiter = limiter
     self.chunkSize = chunkSize
@@ -32,7 +36,31 @@ public actor UploadQueue {
     retryPolicy: UploadRetryPolicy = UploadRetryPolicy()
   ) {
     self.journal = journal
-    self.transport = transport
+    blobTransport = transport
+    operationTransport = nil
+    operationProvider = nil
+    self.retryPolicy = retryPolicy
+    limiter = UploadAdmissionLimiter(
+      maximumActive: configuration.maxConcurrentUploads,
+      bytesPerTick: configuration.maxUploadBytesPerSecond
+    )
+    chunkSize = configuration.uploadChunkBytes
+  }
+
+  /// The production archive route: Platform creates and owns a pollable import operation before
+  /// the managed archive copy is streamed. A queue configured this way never sends bytes through
+  /// the generic blob receipt path.
+  public init(
+    journal: LocalArchiveJournal,
+    provider: PlatformArchiveProvider,
+    operationTransport: any PlatformArchiveOperationTransport,
+    configuration: AgentConfiguration,
+    retryPolicy: UploadRetryPolicy = UploadRetryPolicy()
+  ) {
+    self.journal = journal
+    blobTransport = nil
+    self.operationTransport = operationTransport
+    operationProvider = provider
     self.retryPolicy = retryPolicy
     limiter = UploadAdmissionLimiter(
       maximumActive: configuration.maxConcurrentUploads,

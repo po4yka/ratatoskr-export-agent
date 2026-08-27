@@ -30,6 +30,24 @@ extension UploadQueue {
           isEligible(queued, at: now), let path = queued.managedArchivePath else { return }
     _ = try journal.advance(entryID: entryID, to: .uploading)
     publishStatus()
+    if let operationTransport, let operationProvider {
+      let prepared = try await operationTransport.prepare(
+        provider: operationProvider,
+        fingerprint: queued.fingerprint,
+        idempotencyKey: queued.idempotencyKey
+      )
+      _ = try journal.bindBackendOperation(entryID: entryID, operationID: prepared.operationID)
+      try await operationTransport.transfer(
+        provider: operationProvider,
+        prepared: prepared,
+        archiveURL: URL(filePath: path),
+        fingerprint: queued.fingerprint
+      )
+      _ = try journal.advance(entryID: entryID, to: .uploaded)
+      publishStatus()
+      return
+    }
+    guard let blobTransport else { throw PlatformDeviceTransportError.invalidResponse }
     let session = queued.uploadCheckpoint.flatMap { checkpoint in
       checkpoint.resumptionToken.map {
         BlobUploadSession(token: $0, chunkSizeBytes: checkpoint.chunkSizeBytes)
@@ -42,7 +60,7 @@ extension UploadQueue {
       mediaType: "application/zip",
       idempotencyKey: queued.idempotencyKey,
       checkpoint: session,
-      transport: transport,
+      transport: blobTransport,
       didOpenSession: { session in
         try await self.persistAcknowledgement(entryID: entryID, session: session, indices: [])
       },

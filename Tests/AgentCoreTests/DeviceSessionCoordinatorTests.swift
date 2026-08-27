@@ -22,6 +22,7 @@ final class DeviceSessionCoordinatorTests: XCTestCase {
     let coordinator = try await pairedCoordinator(transport: fixture)
 
     async let first = coordinator.refreshedAccessCredential()
+    await fixture.waitForRefreshToStart()
     async let second = coordinator.refreshedAccessCredential()
     _ = try await [first, second]
 
@@ -129,6 +130,7 @@ private actor SessionTransportFixture: PlatformDeviceTransport {
   private let sessionResult: Result<DeviceSessionCredentials, Error>
   private var storedRefreshTokens: [String] = []
   private var sessionCount = 0
+  private var refreshStarted: CheckedContinuation<Void, Never>?
 
   init(
     pairing: DevicePairingResponse,
@@ -143,10 +145,17 @@ private actor SessionTransportFixture: PlatformDeviceTransport {
   var refreshTokens: [String] { storedRefreshTokens }
   var openedSessionCount: Int { sessionCount }
 
+  func waitForRefreshToStart() async {
+    guard storedRefreshTokens.isEmpty else { return }
+    await withCheckedContinuation { refreshStarted = $0 }
+  }
+
   func pair(_ request: DevicePairingRequest) async throws -> DevicePairingResponse { pairing }
 
   func refresh(origin: URL, refreshToken: String) async throws -> DeviceSessionCredentials {
     storedRefreshTokens.append(refreshToken)
+    refreshStarted?.resume()
+    refreshStarted = nil
     try? await Task.sleep(for: .milliseconds(10))
     return try refreshResult.get()
   }
