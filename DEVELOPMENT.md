@@ -3,7 +3,7 @@
 > Status: Proposed  
 > Last reviewed: 2026-08-20
 
-The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing, and a journal-backed resumable upload queue verified against fixed blob-transfer fixtures and an in-process harness. Authenticated Platform/receiver integration, reminders, background distribution, signing, and update flow remain pending.
+The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing, a journal-backed resumable upload queue, and durable import-operation status projection. The agent reads only authenticated `GET /v1/operations/{id}` snapshots, persists the last valid privacy-safe fact, retains its timestamp while Platform is unreachable, and shows generic per-archive status. Terminal notices respect the existing macOS permission decision and never request permission themselves. Authenticated Platform/receiver integration, reminders, background distribution, signing, and update flow remain pending.
 
 ## Intended toolchain
 
@@ -28,6 +28,23 @@ SwiftLint carries the size limits through the committed `.swiftlint.yml`; it ins
 `UploadQueue` holds the durable scheduler-to-uploader link: it streams one configured chunk at a time from the managed local archive, writes every receiver acknowledgement to the journal, resumes a recorded session by querying its status, and uses the SHA-256-derived journal identity on every open attempt. Retryable transport failures receive bounded backoff; permanent failures stop until an explicit retry. The queue admits upload slots and bytes before reading each chunk, and publishes only redacted state/progress for `UploadMenuStatusBinding`.
 
 The fixed blob-transfer fixture and in-process harness are local contract evidence, not live proof. The authenticated Platform edge and receiving-service run remains pending until those services expose their configured binding.
+
+## Backend import status and notices
+
+`BackendImportStatusMapper` reads only the typed `ai_archive_import_summary` on an
+`ai_archive.import` result. Missing or malformed summaries remain unverified; they never become a
+complete import. A journal entry retains the Platform operation ID, last valid presentation,
+Platform ordering timestamp when present, observed-at timestamp, and terminal-notice delivery bit;
+it retains no provider error, path, archive content, filename, count, or credential. A stale
+out-of-order `status_changed_at` response cannot replace a newer stored fact, and a repeat that
+omits a previously known ordering timestamp cannot erase that fact. Concurrent terminal checks
+reserve one delivery before calling macOS, so they cannot duplicate a notice before the durable
+delivery marker is written.
+
+The status menu renders a short local ID, generic state and `last known` time only. `UserNotificationImportService` considers only `authorized` notification permission, never requests it,
+and sends generic complete/needs-attention/failed text after a terminal observation is durably
+recorded. Its deterministic tests cover denied permission, exactly-once authorized delivery, and
+unreachable polling after journal reopen.
 
 ## Platform device pairing evidence
 

@@ -122,7 +122,7 @@ public struct URLSessionPlatformDeviceTransport: PlatformDeviceTransport {
   }
 }
 
-private final class PlatformRedirectBlocker: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+final class PlatformRedirectBlocker: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
   func urlSession(
     _ session: URLSession,
     task: URLSessionTask,

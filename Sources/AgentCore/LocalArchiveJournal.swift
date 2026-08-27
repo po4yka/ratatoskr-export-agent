@@ -82,6 +82,7 @@ public final class LocalArchiveJournal {
       idempotencyKey: previous.idempotencyKey,
       state: state,
       uploadCheckpoint: previous.uploadCheckpoint,
+      backendImport: previous.backendImport,
       managedArchivePath: previous.managedArchivePath
     )
     try persist(.transition(entry))
@@ -100,6 +101,7 @@ public final class LocalArchiveJournal {
     let entry = JournalEntry(
       id: previous.id, fingerprint: previous.fingerprint,
       idempotencyKey: previous.idempotencyKey, state: previous.state, uploadCheckpoint: upload,
+      backendImport: previous.backendImport,
       managedArchivePath: previous.managedArchivePath
     )
     try persist(.checkpoint(entry))
@@ -123,6 +125,7 @@ public final class LocalArchiveJournal {
         idempotencyKey: entry.idempotencyKey,
         state: .queued,
         uploadCheckpoint: entry.uploadCheckpoint,
+        backendImport: entry.backendImport,
         managedArchivePath: entry.managedArchivePath
       )
       try persist(.recovery(recovered))

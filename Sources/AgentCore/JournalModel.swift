@@ -52,6 +52,8 @@ public struct JournalEntry: Codable, Equatable, Sendable {
   public let idempotencyKey: String
   public let state: JournalState
   public let uploadCheckpoint: UploadCheckpoint?
+  /// The last verified Platform operation fact. It contains no backend diagnostic or archive content.
+  public let backendImport: BackendImportObservation?
   /// Agent-managed archive path. This local-only value is never sent or shown.
   public let managedArchivePath: String?
 
@@ -61,6 +63,7 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     idempotencyKey: String,
     state: JournalState,
     uploadCheckpoint: UploadCheckpoint? = nil,
+    backendImport: BackendImportObservation? = nil,
     managedArchivePath: String? = nil
   ) {
     self.id = id
@@ -68,6 +71,7 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     self.idempotencyKey = idempotencyKey
     self.state = state
     self.uploadCheckpoint = uploadCheckpoint
+    self.backendImport = backendImport
     self.managedArchivePath = managedArchivePath
   }
 }

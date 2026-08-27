@@ -14,6 +14,7 @@ public extension LocalArchiveJournal {
       idempotencyKey: previous.idempotencyKey,
       state: .queued,
       uploadCheckpoint: upload,
+      backendImport: previous.backendImport,
       managedArchivePath: previous.managedArchivePath
     )
     try persist(.recovery(entry))

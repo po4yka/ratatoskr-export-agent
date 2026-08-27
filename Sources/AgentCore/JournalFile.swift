@@ -5,6 +5,7 @@ enum JournalRecordKind: String, Codable {
   case transition
   case recovery
   case checkpoint
+  case backendObservation
   case snapshot
 }
 
@@ -23,6 +24,10 @@ struct JournalRecord: Codable {
 
   static func checkpoint(_ entry: JournalEntry) -> JournalRecord {
     JournalRecord(kind: .checkpoint, entry: entry, entries: nil)
+  }
+
+  static func backendObservation(_ entry: JournalEntry) -> JournalRecord {
+    JournalRecord(kind: .backendObservation, entry: entry, entries: nil)
   }
 
   static func snapshot(_ entries: [JournalEntry]) -> JournalRecord {
@@ -125,7 +130,10 @@ enum JournalFile {
       entry.state == .queued
     let checkpointTransition = record.kind == .checkpoint && previous.state == entry.state &&
       (entry.state == .queued || entry.state == .uploading)
-    guard keepsIdentity, normalTransition || recoveryTransition || checkpointTransition else {
+    let backendObservation = record.kind == .backendObservation && previous.state == entry.state &&
+      previous.uploadCheckpoint == entry.uploadCheckpoint &&
+      isValidBackendObservationTransition(from: previous.backendImport, to: entry.backendImport)
+    guard keepsIdentity, normalTransition || recoveryTransition || checkpointTransition || backendObservation else {
       throw LocalJournalError.safeStop(.impossibleTransition)
     }
     projection[entry.id] = entry
