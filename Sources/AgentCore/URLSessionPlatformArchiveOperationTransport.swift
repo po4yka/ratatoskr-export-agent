@@ -1,7 +1,7 @@
 import Foundation
 
 /// HTTPS client for Platform's operation-bound archive endpoints.
-public struct URLSessionPlatformArchiveOperationTransport: PlatformArchiveOperationTransport {
+public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
   private let origin: URL
   private let accessCredential: String
   private let session: URLSession
@@ -38,8 +38,9 @@ public struct URLSessionPlatformArchiveOperationTransport: PlatformArchiveOperat
     let (data, response) = try await perform(request)
     guard response.statusCode == 202 else { throw response.error }
     let prepared: PrepareResponse
-    do { prepared = try JSONDecoder().decode(PrepareResponse.self, from: data) }
-    catch { throw PlatformDeviceTransportError.invalidResponse }
+    do { prepared = try JSONDecoder().decode(PrepareResponse.self, from: data) } catch {
+      throw PlatformDeviceTransportError.invalidResponse
+    }
     guard prepared.status == "accepted", let operationID = UUID(uuidString: prepared.operationID),
           prepared.uploadPath == "/v1/ai-archives/\(provider.rawValue)/\(operationID.uuidString.lowercased())/content"
     else { throw PlatformDeviceTransportError.invalidResponse }
@@ -60,8 +61,9 @@ public struct URLSessionPlatformArchiveOperationTransport: PlatformArchiveOperat
     request.setValue("Bearer \(accessCredential)", forHTTPHeaderField: "Authorization")
     request.setValue("application/zip", forHTTPHeaderField: "Content-Type")
     let (_, response): (Data, URLResponse)
-    do { (_, response) = try await session.upload(for: request, fromFile: archiveURL) }
-    catch { throw PlatformDeviceTransportError.unavailable }
+    do { (_, response) = try await session.upload(for: request, fromFile: archiveURL) } catch {
+      throw PlatformDeviceTransportError.unavailable
+    }
     guard let response = response as? HTTPURLResponse else {
       throw PlatformDeviceTransportError.invalidResponse
     }
@@ -71,8 +73,9 @@ public struct URLSessionPlatformArchiveOperationTransport: PlatformArchiveOperat
   private func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
     let data: Data
     let response: URLResponse
-    do { (data, response) = try await session.data(for: request) }
-    catch { throw PlatformDeviceTransportError.unavailable }
+    do { (data, response) = try await session.data(for: request) } catch {
+      throw PlatformDeviceTransportError.unavailable
+    }
     guard let response = response as? HTTPURLResponse else {
       throw PlatformDeviceTransportError.invalidResponse
     }

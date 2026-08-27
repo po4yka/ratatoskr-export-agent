@@ -167,23 +167,3 @@ private actor SessionTransportFixture: PlatformDeviceTransport {
     return try sessionResult.get()
   }
 }
-
-private func XCTAssertThrowsErrorAsync(
-  _ operation: @escaping @Sendable () async throws -> String
-) async {
-  do {
-    _ = try await operation()
-    XCTFail("the operation must fail")
-  } catch {}
-}
-
-private func capturedError(
-  _ operation: @escaping @Sendable () async throws -> String
-) async -> Error? {
-  do {
-    _ = try await operation()
-    return nil
-  } catch {
-    return error
-  }
-}

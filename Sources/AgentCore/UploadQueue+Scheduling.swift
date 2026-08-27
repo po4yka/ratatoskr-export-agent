@@ -26,25 +26,14 @@ extension UploadQueue {
   }
 
   func transfer(entryID: UUID, now: Date) async throws {
-    guard let queued = journal.entries.first(where: { $0.id == entryID }),
-          isEligible(queued, at: now), let path = queued.managedArchivePath else { return }
+    guard let queued = journal.entries.first(where: { $0.id == entryID }), isEligible(queued, at: now), let path = queued.managedArchivePath else { return }
     _ = try journal.advance(entryID: entryID, to: .uploading)
     publishStatus()
     if let operationTransport, let operationProvider {
-      let prepared = try await operationTransport.prepare(
-        provider: operationProvider,
-        fingerprint: queued.fingerprint,
-        idempotencyKey: queued.idempotencyKey
+      try await transferOperation(
+        entryID: entryID, queued: queued, archiveURL: URL(filePath: path),
+        provider: operationProvider, transport: operationTransport
       )
-      _ = try journal.bindBackendOperation(entryID: entryID, operationID: prepared.operationID)
-      try await operationTransport.transfer(
-        provider: operationProvider,
-        prepared: prepared,
-        archiveURL: URL(filePath: path),
-        fingerprint: queued.fingerprint
-      )
-      _ = try journal.advance(entryID: entryID, to: .uploaded)
-      publishStatus()
       return
     }
     guard let blobTransport else { throw PlatformDeviceTransportError.invalidResponse }
@@ -70,6 +59,24 @@ extension UploadQueue {
       admitChunk: { bytes in
         await self.limiter.reserveBytes(bytes: bytes)
       }
+    )
+    _ = try journal.advance(entryID: entryID, to: .uploaded)
+    publishStatus()
+  }
+
+  func transferOperation(
+    entryID: UUID,
+    queued: JournalEntry,
+    archiveURL: URL,
+    provider: PlatformArchiveProvider,
+    transport: any PlatformArchiveOperationTransport
+  ) async throws {
+    let prepared = try await transport.prepare(
+      provider: provider, fingerprint: queued.fingerprint, idempotencyKey: queued.idempotencyKey
+    )
+    _ = try journal.bindBackendOperation(entryID: entryID, operationID: prepared.operationID)
+    try await transport.transfer(
+      provider: provider, prepared: prepared, archiveURL: archiveURL, fingerprint: queued.fingerprint
     )
     _ = try journal.advance(entryID: entryID, to: .uploaded)
     publishStatus()

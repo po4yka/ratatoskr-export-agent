@@ -5,23 +5,26 @@ extension UploadQueue {
     guard let current = journal.entries.first(where: { $0.id == entryID }),
           current.state == .uploading else { return }
     let checkpoint = current.uploadCheckpoint ?? UploadCheckpoint(chunkSizeBytes: chunkSize)
-    let next: UploadCheckpoint
+    let next = retryCheckpoint(for: error, from: checkpoint, at: now)
+    _ = try? journal.deferRetry(entryID: entryID, upload: next)
+    publishStatus()
+  }
+
+  func retryCheckpoint(for error: Error, from checkpoint: UploadCheckpoint, at now: Date) -> UploadCheckpoint {
     switch error {
-    case BlobReceiptTransportError.unavailable:
-      next = retryCheckpoint(from: checkpoint, at: now)
-    case PlatformDeviceTransportError.unavailable:
-      next = retryCheckpoint(from: checkpoint, at: now)
+    case BlobReceiptTransportError.unavailable, PlatformDeviceTransportError.unavailable:
+      return retryCheckpoint(from: checkpoint, at: now)
     case let BlobReceiptTransportError.retryAfter(retryAfter):
-      next = retryCheckpoint(from: checkpoint, at: now, retryAfter: retryAfter)
+      return retryCheckpoint(from: checkpoint, at: now, retryAfter: retryAfter)
     case BlobReceiptTransportError.expiredSession:
       let attempt = checkpoint.attemptCount + 1
-      next = UploadCheckpoint(
+      return UploadCheckpoint(
         chunkSizeBytes: chunkSize,
         attemptCount: attempt,
         nextRetryAt: retryPolicy.nextEligible(at: now, attempt: attempt)
       )
     case BlobReceiptTransportError.capacityUnavailable:
-      next = UploadCheckpoint(
+      return UploadCheckpoint(
         resumptionToken: checkpoint.resumptionToken,
         chunkSizeBytes: checkpoint.chunkSizeBytes,
         acknowledgedIndices: checkpoint.acknowledgedIndices,
@@ -29,7 +32,7 @@ extension UploadQueue {
         nextRetryAt: now
       )
     default:
-      next = UploadCheckpoint(
+      return UploadCheckpoint(
         resumptionToken: checkpoint.resumptionToken,
         chunkSizeBytes: checkpoint.chunkSizeBytes,
         acknowledgedIndices: checkpoint.acknowledgedIndices,
@@ -37,8 +40,6 @@ extension UploadQueue {
         control: .failed
       )
     }
-    _ = try? journal.deferRetry(entryID: entryID, upload: next)
-    publishStatus()
   }
 
   func retryCheckpoint(
