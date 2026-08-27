@@ -29,6 +29,8 @@ jobs:
         run: swift build -c release # gate-command
       - name: Launch release binary in smoke mode
         run: .build/release/RatatoskrExportAgent --smoke # gate-command
+      - name: Validate distribution structure and policy
+        run: Tests/Distribution/run.sh # gate-command
       - name: Install SwiftLint
         run: brew install swiftlint
       - name: Lint

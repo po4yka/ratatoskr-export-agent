@@ -44,7 +44,7 @@ final class OperationalDiagnosticsTests: XCTestCase {
     XCTAssertEqual(snapshot.queue, .unavailable)
   }
 
-  func testUpdateCheckIsDeferred() {
+  func testUpdateCheckUsesManualDownloadWithoutGuessingVersion() {
     let snapshot = OperationalDiagnosticsAssembler.assemble(
       folderAccess: [],
       notificationAuthorization: .authorized,
@@ -53,7 +53,10 @@ final class OperationalDiagnosticsTests: XCTestCase {
       queueStatus: nil
     )
 
-    XCTAssertEqual(snapshot.updateCheck, .deferredPendingDistributionDecision)
+    XCTAssertEqual(
+      String(describing: snapshot.updateCheck),
+      "manualDownload(currentVersion: nil)"
+    )
   }
 
   private func queuedEntry() -> JournalEntry {

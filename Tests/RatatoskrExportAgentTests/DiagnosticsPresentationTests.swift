@@ -20,7 +20,7 @@ final class DiagnosticsPresentationTests: XCTestCase {
       diskSpace: .available(bytes: 4_194_304),
       journal: .healthy(entryCount: 2),
       queue: .available(.init(active: 0, queued: 2, paused: 0, retrying: 0, failed: 0)),
-      updateCheck: .deferredPendingDistributionDecision
+      updateCheck: .manualDownload(currentVersion: "1.2.3")
     )
     let viewModel = DiagnosticsViewModel(snapshot: snapshot)
 
@@ -31,5 +31,6 @@ final class DiagnosticsPresentationTests: XCTestCase {
     let rendered = viewModel.rows.map { "\($0.title):\($0.value)" }.joined(separator: "\n")
     XCTAssertFalse(rendered.contains("/Users/private"))
     XCTAssertFalse(rendered.contains("https://archive.internal"))
+    XCTAssertTrue(rendered.contains("Manual download; current version 1.2.3"))
   }
 }

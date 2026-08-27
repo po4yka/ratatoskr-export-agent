@@ -159,7 +159,7 @@ extension SupportReportRedactionTests {
       diskSpace: .available(bytes: 8_388_608),
       journal: .healthy(entryCount: 1),
       queue: .available(.init(active: 0, queued: 1, paused: 0, retrying: 0, failed: 0)),
-      updateCheck: .deferredPendingDistributionDecision
+      updateCheck: .manualDownload(currentVersion: "0.1.0")
     )
   }
 }

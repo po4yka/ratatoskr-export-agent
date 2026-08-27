@@ -1,0 +1,59 @@
+name: distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      short_version:
+        description: Application short version, for example 1.0.0
+        required: true
+        type: string
+      build_version:
+        description: Positive integer bundle build version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: distribution-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  notarized-app:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+      APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+      APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+      APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+      APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
+      RELEASE_SHORT_VERSION: ${{ inputs.short_version }}
+      RELEASE_BUILD_VERSION: ${{ inputs.build_version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate owner authorization
+        run: scripts/distribution/validate-owner-secrets.sh
+      - name: Build release executable
+        run: swift build -c release
+      - name: Run distribution structure and policy tests
+        run: Tests/Distribution/run.sh
+      - name: Sign, notarize, staple, and validate
+        run: |
+          scripts/distribution/sign-and-notarize.sh \
+            --binary .build/release/RatatoskrExportAgent \
+            --output "$RUNNER_TEMP/distribution" \
+            --short-version "$RELEASE_SHORT_VERSION" \
+            --build-version "$RELEASE_BUILD_VERSION"
+      - name: Upload notarized application
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: RatatoskrExportAgent-${{ inputs.short_version }}-notarized
+          path: |
+            ${{ runner.temp }}/distribution/*.zip
+            ${{ runner.temp }}/distribution/*.sha256
+          if-no-files-found: error
+          retention-days: 14

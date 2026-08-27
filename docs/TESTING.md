@@ -8,13 +8,19 @@ Required tests:
 - Keychain pairing/rotation/revoke and no-secret diagnostics.
 - Upload chunk/resume/idempotency, offline/timeout/TLS/error classification, backend operation polling.
 - Notification privacy plus watched-item reminder threshold, suppression, snooze, and rearm behavior.
-- Diagnostics assembly for mixed folder permission, notification, disk, journal, queue, and deferred-update states.
+- Diagnostics assembly for mixed folder permission, notification, disk, journal, queue, and manual-update/version states.
 - Support-report canaries proving default filename/path/content/URL/credential/full-digest redaction,
   explicit per-item field inclusion, prohibited-value refusal, and preview-byte-identical local export.
 - App lifecycle, sleep/wake, sandbox/bookmark restoration, packaging, signing/notarization/update checks.
 - Workspace synthetic export-agent -> archive-service vertical flow.
 
 Tests use synthetic ZIPs and local mock servers; no personal export or production credential is committed.
+
+`Tests/Distribution/run.sh` assembles the `.app`, validates exact bundle metadata and entitlements,
+rejects unsigned/ad hoc release claims, and launches an ad hoc sandbox smoke bundle. Those checks do
+not prove Developer ID, Apple notarization, stapling, Gatekeeper acceptance on a clean Mac, or workspace
+integration. The manual owner-authorized workflow is the only hosted notarization path, and its current
+credential blocker is recorded in `DISTRIBUTION.md`.
 
 ## Test-first
 

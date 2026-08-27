@@ -592,8 +592,9 @@ Diagnostics are local-first and sanitized. Optional server telemetry sends only 
 The implemented Diagnostics panel assembles one immutable snapshot from security-scoped folder access,
 macOS notification authorization, current archive-volume capacity, local journal health, and a queue
 projection trusted only when the journal opens cleanly. Journal corruption reports
-`requiresAttention` and makes queue depth unavailable. Update checking is an inert
-`deferredPendingDistributionDecision` state: it has no endpoint, timer, entitlement, or network client.
+`requiresAttention` and makes queue depth unavailable. Update diagnostics report manual-download mode
+and the exact bundled short version when available. They have no update endpoint, timer, comparison,
+download, install, entitlement, or network client.
 
 Support reports are redacted by construction rather than scrubbed after encoding. The default closed
 schema admits only application/build facts, bounded states and counters, byte sizes, local item IDs,
@@ -659,15 +660,17 @@ network seam. Optional detail selection is per item and field; paths and credent
 
 ## 27. Distribution architecture
 
-Potential distribution profiles:
+ADR-0007 selects a direct-distribution notarized app with App Sandbox. The committed entitlement
+allowlist grants only sandbox containment, user-selected read/write access, and outbound network client
+access. Persistent folder authority remains in security-scoped bookmarks; Keychain uses the app's
+default access boundary. There is no privileged helper, login item, broad Downloads/home grant,
+incoming network grant, update feed, or updater process.
 
-```text
-Developer/self-hosted signed build
-Direct-distribution notarized app
-Mac App Store sandboxed app, if feature constraints allow
-```
-
-The chosen profile determines helper, sandbox, directory bookmark, update, and background-execution design. Distribution-specific code stays behind platform adapters so core workflow remains testable.
+SwiftPM remains the build graph. Normal CI assembles and smoke-tests an ad hoc sandbox bundle but
+rejects it as release evidence. Owner-authorized CI imports one Developer ID Application identity into
+an ephemeral Keychain, enables hardened runtime and a secure timestamp, submits through `notarytool`,
+staples the ticket, checks Gatekeeper, and publishes only the validated final ZIP. The current absence
+of owner credentials blocks notarization evidence without blocking local development.
 
 ## 28. Architectural invariants
 
@@ -699,6 +702,6 @@ Initial milestones:
 7. Background resume and notifications.
 8. Watched-item reminder policy and operational diagnostics. (Delivered)
 9. Redacted, reviewable local support report export. (Delivered)
-10. Signed/notarized distribution, update mechanism, recovery runbooks, and privacy audit.
+10. Sandboxed distribution structure, manual update mechanism, recovery runbook, and privacy audit. (Delivered; owner notarization and clean-machine evidence pending)
 
 Changes to provider-login policy, filesystem scope, device credential model, or automatic deletion require ADRs and coordinated workspace changesets.

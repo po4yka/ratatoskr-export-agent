@@ -10,4 +10,4 @@ Initial backlog:
 - ADR-0004: Immutable local archive and journal storage.
 - ADR-0005: Device pairing and Keychain credentials.
 - ADR-0006: Resumable upload and offline retry.
-- ADR-0007: Sandbox, signing, notarization, and updates.
+- [ADR-0007](0007-sandbox-signing-notarization-and-manual-updates.md): Sandbox, signing, notarization, and manual updates. (Accepted)

@@ -59,8 +59,8 @@ public enum QueueDepthDiagnostics: Codable, Equatable, Sendable {
   case unavailable
 }
 
-public enum UpdateCheckDiagnostics: String, Codable, Sendable {
-  case deferredPendingDistributionDecision
+public enum UpdateCheckDiagnostics: Codable, Equatable, Sendable {
+  case manualDownload(currentVersion: String?)
 }
 
 public struct OperationalDiagnosticsSnapshot: Codable, Equatable, Sendable {
@@ -95,7 +95,8 @@ public enum OperationalDiagnosticsAssembler {
     diskSpace: DiskSpaceDiagnostics,
     journalHealth: JournalHealthDiagnostics,
     queueStatus: UploadQueueStatus?,
-    folderAccessAvailable: Bool = true
+    folderAccessAvailable: Bool = true,
+    applicationShortVersion: String? = nil
   ) -> OperationalDiagnosticsSnapshot {
     let permissions = folderAccess.reduce(
       into: FolderPermissionDiagnostics(accessible: 0, needsReauthorization: 0, missing: 0, denied: 0)
@@ -127,7 +128,7 @@ public enum OperationalDiagnosticsAssembler {
       diskSpace: diskSpace,
       journal: journalHealth,
       queue: queue,
-      updateCheck: .deferredPendingDistributionDecision
+      updateCheck: ApplicationUpdatePolicy.diagnostics(currentVersion: applicationShortVersion)
     )
   }
 

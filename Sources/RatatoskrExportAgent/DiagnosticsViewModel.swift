@@ -30,7 +30,7 @@ final class DiagnosticsViewModel: ObservableObject {
       DiagnosticRow(title: "Disk space", value: diskText(snapshot.diskSpace)),
       DiagnosticRow(title: "Journal", value: journalText(snapshot.journal)),
       DiagnosticRow(title: "Queue", value: queueText(snapshot.queue)),
-      DiagnosticRow(title: "Updates", value: "Deferred until distribution is selected"),
+      DiagnosticRow(title: "Updates", value: updateText(snapshot.updateCheck)),
     ]
   }
 
@@ -71,6 +71,14 @@ final class DiagnosticsViewModel: ObservableObject {
         + "\(queue.paused) paused, \(queue.failed) failed"
     case .unavailable:
       "Unavailable"
+    }
+  }
+
+  private static func updateText(_ value: UpdateCheckDiagnostics) -> String {
+    switch value {
+    case .manualDownload(let currentVersion):
+      guard let currentVersion else { return "Manual download; current version unavailable" }
+      return "Manual download; current version \(currentVersion)"
     }
   }
 }

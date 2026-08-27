@@ -6,6 +6,7 @@ import AppKit
 enum AgentMenu {
   static let settingsTitle = "Settings…"
   static let diagnosticsTitle = "Diagnostics…"
+  static let checkForUpdatesTitle = "Check for Updates…"
   static let quitTitle = "Quit Ratatoskr"
   static let uploadStatusItemTag = 71
   static let importStatusItemTag = 72
@@ -25,31 +26,33 @@ enum AgentMenu {
     addImportStatus(entries: importEntries, to: menu)
     menu.addItem(.separator())
 
-    let settingsItem = NSMenuItem(
+    menu.addItem(actionItem(
       title: settingsTitle,
       action: #selector(AgentMenuCoordinator.settingsSelected),
-      keyEquivalent: ","
-    )
-    settingsItem.target = coordinator
-    menu.addItem(settingsItem)
+      keyEquivalent: ",",
+      target: coordinator
+    ))
 
-    let diagnosticsItem = NSMenuItem(
+    menu.addItem(actionItem(
       title: diagnosticsTitle,
       action: #selector(AgentMenuCoordinator.diagnosticsSelected),
-      keyEquivalent: ""
-    )
-    diagnosticsItem.target = coordinator
-    menu.addItem(diagnosticsItem)
+      target: coordinator
+    ))
+
+    menu.addItem(actionItem(
+      title: checkForUpdatesTitle,
+      action: #selector(AgentMenuCoordinator.checkForUpdatesSelected),
+      target: coordinator
+    ))
 
     menu.addItem(.separator())
 
-    let quitItem = NSMenuItem(
+    menu.addItem(actionItem(
       title: quitTitle,
       action: #selector(AgentMenuCoordinator.quitSelected),
-      keyEquivalent: "q"
-    )
-    quitItem.target = coordinator
-    menu.addItem(quitItem)
+      keyEquivalent: "q",
+      target: coordinator
+    ))
 
     return menu
   }
@@ -82,25 +85,16 @@ enum AgentMenu {
       menu.addItem(item)
     }
   }
-}
 
-/// Binds menu rendering to queue-owned state without giving AppKit authority
-/// to mutate uploads, files, or transport state.
-@MainActor
-final class UploadMenuStatusBinding {
-  private var updateTask: Task<Void, Never>?
-
-  init(menu: NSMenu, updates: AsyncStream<UploadQueueStatus>) {
-    updateTask = Task { [weak menu] in
-      for await status in updates {
-        guard let menu else { return }
-        AgentMenu.apply(uploadStatus: status, to: menu)
-      }
-    }
-  }
-
-  deinit {
-    updateTask?.cancel()
+  private static func actionItem(
+    title: String,
+    action: Selector,
+    keyEquivalent: String = "",
+    target: AnyObject
+  ) -> NSMenuItem {
+    let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+    item.target = target
+    return item
   }
 }
 
@@ -109,6 +103,24 @@ final class UploadMenuStatusBinding {
 final class AgentMenuCoordinator: NSObject {
   private var settingsWindowController: SettingsWindowController?
   private var diagnosticsWindowController: DiagnosticsWindowController?
+  private let openUpdateURL: (URL) -> Bool
+  private let presentUpdateFailure: () -> Void
+
+  override convenience init() {
+    self.init(
+      openUpdateURL: { NSWorkspace.shared.open($0) },
+      presentUpdateFailure: Self.presentUpdateOpenFailure
+    )
+  }
+
+  init(
+    openUpdateURL: @escaping (URL) -> Bool,
+    presentUpdateFailure: @escaping () -> Void
+  ) {
+    self.openUpdateURL = openUpdateURL
+    self.presentUpdateFailure = presentUpdateFailure
+    super.init()
+  }
 
   @objc
   func diagnosticsSelected() {
@@ -131,6 +143,14 @@ final class AgentMenuCoordinator: NSObject {
   }
 
   @objc
+  func checkForUpdatesSelected() {
+    guard openUpdateURL(ApplicationUpdatePolicy.releasesURL) else {
+      presentUpdateFailure()
+      return
+    }
+  }
+
+  @objc
   func quitSelected() {
     NSApplication.shared.terminate(nil)
   }
@@ -142,6 +162,14 @@ final class AgentMenuCoordinator: NSObject {
     alert.messageText = "Watched folder settings could not be loaded."
     alert.informativeText =
       "The stored settings document is invalid. Repair or remove it, then reopen Settings."
+    alert.alertStyle = .warning
+    alert.runModal()
+  }
+
+  private static func presentUpdateOpenFailure() {
+    let alert = NSAlert()
+    alert.messageText = "The Ratatoskr releases page could not be opened."
+    alert.informativeText = "Try again, or open the Ratatoskr Export Agent releases page in your browser."
     alert.alertStyle = .warning
     alert.runModal()
   }

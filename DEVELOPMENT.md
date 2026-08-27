@@ -1,19 +1,21 @@
 # Developing Ratatoskr Export Agent
 
-> Status: Proposed  
-> Last reviewed: 2026-08-20
+> Status: Active
+> Last reviewed: 2026-08-27
 
 The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing,
 a journal-backed resumable upload queue, durable import-operation status projection, gentle local
 watched-item reminders, and an operational Diagnostics panel. The panel exposes typed permission, disk,
 journal, and queue facts and can preview then atomically save a redacted-by-construction support report.
 Terminal notices and reminders respect the existing macOS permission decision and never request
-permission themselves. Authenticated Platform/receiver integration, background distribution, signing,
-notarization, and the distribution-dependent update flow remain pending.
+permission themselves. The app now exposes manual release discovery and has sandbox bundle, signing,
+and notarization automation with exact policy tests. Owner credentials, a hosted notarized artifact,
+clean-machine acceptance, authenticated Platform/receiver integration, and background lifecycle wiring
+remain pending.
 
 ## Intended toolchain
 
-Swift 6, SwiftUI/AppKit where necessary, structured concurrency, FileManager/FileCoordinator, SQLite or another durable local journal, Keychain, URLSession, background scheduling, unified logging, XCTest, Xcode build/signing/notarization.
+Swift 6, SwiftUI/AppKit where necessary, structured concurrency, FileManager/FileCoordinator, a durable local journal, Keychain, URLSession, background scheduling, unified logging, XCTest, and Xcode command-line signing/notarization tools.
 
 ## Code size limits
 
@@ -60,7 +62,7 @@ The device root secret, bearer credential, and rotating refresh token are held t
 
 `DeviceCredentialStoreTests.testMacOSKeychainRoundTripAndDelete` is opt-in because a headless CI runner may not grant Keychain access. Run it on a Keychain-capable macOS runner with `RATATOSKR_KEYCHAIN_INTEGRATION=1 build-gate -- swift test --filter DeviceCredentialStoreTests.testMacOSKeychainRoundTripAndDelete`; without that environment value it skips with this exact evidence reason while deterministic injected-store coverage remains mandatory.
 
-The first scaffold PR must document exact Xcode/SwiftPM, test, sandbox, signing, notarization, and local-server commands. The app never needs ChatGPT/Claude passwords or cookies.
+`docs/DISTRIBUTION.md` documents exact bundle, sandbox, signing, notarization, blocker, recovery, and evidence commands. The app never needs ChatGPT/Claude passwords or cookies.
 
 ## What a clone needs before you plan a change
 
@@ -92,5 +94,6 @@ swift build
 swift test
 swift build -c release
 .build/release/RatatoskrExportAgent --smoke
+Tests/Distribution/run.sh
 swiftlint
 ```

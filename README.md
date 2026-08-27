@@ -2,7 +2,7 @@
 
 `ratatoskr-export-agent` is the local macOS companion for importing official ChatGPT and Claude data exports into Ratatoskr. It watches a user-controlled inbox, identifies provider archives, verifies and submits them to the local Ratatoskr deployment, preserves the original files, and reports backup freshness and import completeness.
 
-> **Status:** bootstrap core delivered as a SwiftPM package. It includes the menu-bar shell, watched-folder configuration and observation, completed-download checks, streaming fingerprinting, bounded classification, immutable local preservation, a fail-closed journal, resumable queue primitives, device pairing/Keychain support, operation polling, local reminders, and operational diagnostics. The Diagnostics panel reports folder and notification permissions, disk capacity, journal health, queue depth, and the deliberately deferred update state. It can preview and save a redacted-by-construction support report locally. Authenticated live archive upload composition, background lifecycle wiring, LaunchAgent packaging, signing, notarization, and the distribution-dependent update mechanism remain pending.
+> **Status:** bootstrap core delivered as a SwiftPM package. It includes the menu-bar shell, watched-folder configuration and observation, completed-download checks, streaming fingerprinting, bounded classification, immutable local preservation, a fail-closed journal, resumable queue primitives, device pairing/Keychain support, operation polling, local reminders, operational diagnostics, and a manual update link. The repository packages a sandboxed `.app`, validates its three-entitlement allowlist, and provides fail-closed Developer ID/notarization CI. Owner signing and notary credentials are absent, so no notarized artifact has been produced. Authenticated live archive upload composition, background lifecycle wiring, clean-machine distribution acceptance, and workspace pinning remain pending.
 
 > [!IMPORTANT]
 > **Ratatoskr is in development.** No database holds data that has to survive a schema change.
@@ -293,19 +293,20 @@ and stays quiet when notifications are denied or the folder is snoozed.
 6. Display provider import and completeness results.
 7. Add safe local archival and retry semantics.
 8. Add local watched-item reminders and operational diagnostics. (Delivered)
-9. Add hardened sandbox, signing, notarization, and the distribution-selected update mechanism.
+9. Add hardened sandbox, signing, notarization, and the distribution-selected update mechanism. (Structure delivered; owner-authorized notarization blocked)
 10. Validate real ChatGPT and Claude export workflows end to end.
 
 ## Workspace integration
 
-The planned workspace harness will pin the Export Agent with compatible Platform, ChatGPT, Claude,
-and AI-archive contract commits. That pin and the product CI do not exist yet. Future public CI will
-use synthetic archives; real personal exports remain outside the repository and protected test
-infrastructure.
+The product CI now covers Swift and unsigned distribution behavior. The planned workspace harness
+still does not exist and therefore cannot pin this Export Agent with compatible Platform, ChatGPT,
+Claude, and AI-archive commits or run the synthetic vertical flow. [Workspace integration notes](docs/WORKSPACE_INTEGRATION.md)
+define compatibility, rollout, rollback, privacy, and the evidence required before claiming that
+integration. Real personal exports remain outside repositories and public CI.
 
 ## Project status
 
-This README defines the intended macOS export-ingestion companion. Local journal, Keychain,
-permission-gated notifications, watched-item reminder policy, diagnostics, and reviewed local support
-report export now exist alongside the watcher/archive bootstrap. Distribution packaging and its update
-model remain future work.
+The local workflow, sandbox bundle structure, manual update action, and release pipeline now exist.
+Local and normal-CI checks cannot sign or notarize without owner material; see
+[distribution evidence and blockers](docs/DISTRIBUTION.md). A push is not proof of hosted notarization,
+clean-machine acceptance, live archive integration, or workspace compatibility.

@@ -25,11 +25,19 @@ The diagnostics state and panel MUST NOT contain watched-folder display names, f
 - **THEN** diagnostics show the denied folder count and recovery action without the folder's name or location
 
 ### Requirement: Update checking remains distribution-gated
-Until the distribution model is selected, diagnostics SHALL represent update checking as deferred and MUST NOT contact an update endpoint, invent update availability, or request update-related permissions.
+With the manual-download distribution model selected, diagnostics SHALL report that update discovery is manual, include the current bundled short version when available, and MUST NOT contact an update endpoint, claim that an update exists, or request update-related permissions.
+
+#### Scenario: User inspects update status after distribution selection
+- **WHEN** diagnostics are assembled with a readable bundled short version
+- **THEN** update status reports that updates are checked manually, includes the exact current version, and performs no network operation
+
+#### Scenario: Bundled version cannot be read
+- **WHEN** diagnostics are assembled without a readable bundled short version
+- **THEN** update status reports manual checking with current version unavailable and performs no network operation
 
 #### Scenario: User inspects update status during bootstrap
-- **WHEN** diagnostics are assembled before the item 10 distribution decision
-- **THEN** update status is reported as deferred pending distribution selection and no network operation is performed
+- **WHEN** diagnostics are assembled by an unbundled development or test process after the manual-download decision
+- **THEN** update status reports manual checking with current version unavailable and no network operation is performed
 
 ### Requirement: Diagnostics are user-accessible
 The menu-bar agent SHALL expose a diagnostics panel that presents every diagnostic category and an action to export the support report.

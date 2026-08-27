@@ -34,7 +34,8 @@ enum DiagnosticsSnapshotLoader {
       diskSpace: FileManagerDiskSpaceProbe().availableSpace(at: directory),
       journalHealth: journalContext.diagnostics.health,
       queueStatus: journalContext.diagnostics.queueStatus,
-      folderAccessAvailable: registry != nil
+      folderAccessAvailable: registry != nil,
+      applicationShortVersion: ApplicationUpdatePolicy.currentVersion()
     )
     return DiagnosticsSnapshotContext(snapshot: snapshot, entries: journalContext.entries)
   }
