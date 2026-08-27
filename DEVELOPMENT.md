@@ -3,7 +3,13 @@
 > Status: Proposed  
 > Last reviewed: 2026-08-20
 
-The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing, a journal-backed resumable upload queue, and durable import-operation status projection. The agent reads only authenticated `GET /v1/operations/{id}` snapshots, persists the last valid privacy-safe fact, retains its timestamp while Platform is unreachable, and shows generic per-archive status. Terminal notices respect the existing macOS permission decision and never request permission themselves. Authenticated Platform/receiver integration, reminders, background distribution, signing, and update flow remain pending.
+The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing,
+a journal-backed resumable upload queue, durable import-operation status projection, gentle local
+watched-item reminders, and an operational Diagnostics panel. The panel exposes typed permission, disk,
+journal, and queue facts and can preview then atomically save a redacted-by-construction support report.
+Terminal notices and reminders respect the existing macOS permission decision and never request
+permission themselves. Authenticated Platform/receiver integration, background distribution, signing,
+notarization, and the distribution-dependent update flow remain pending.
 
 ## Intended toolchain
 
@@ -41,7 +47,7 @@ omits a previously known ordering timestamp cannot erase that fact. Concurrent t
 reserve one delivery before calling macOS, so they cannot duplicate a notice before the durable
 delivery marker is written.
 
-The status menu renders a short local ID, generic state and `last known` time only. `UserNotificationImportService` considers only `authorized` notification permission, never requests it,
+The status menu renders a short local ID, generic state and `last known` time only. `UserAgentNotificationService` considers only `authorized` notification permission, never requests it,
 and sends generic complete/needs-attention/failed text after a terminal observation is durably
 recorded. Its deterministic tests cover denied permission, exactly-once authorized delivery, and
 unreachable polling after journal reopen.

@@ -1,22 +1,7 @@
 import Foundation
 
-/// The only notification authorization states relevant to the agent.
-public enum ImportNotificationAuthorization: Sendable {
-  case authorized
-  case deniedOrUnavailable
-}
-
-/// Minimal system-notification boundary, injected to keep permission and privacy tests deterministic.
-public protocol ImportNotificationServing {
-  func authorization() async -> ImportNotificationAuthorization
-  func deliver(_ notice: ImportTerminalNotice) async throws
-}
-
 /// Generic terminal notice. It deliberately has no provider, archive, path, count, or diagnostic.
-public struct ImportTerminalNotice: Equatable, Sendable {
-  public let title: String
-  public let body: String
-
+extension AgentNotification {
   public init(presentation: BackendImportPresentation) {
     switch presentation {
     case .importedComplete:
@@ -38,11 +23,11 @@ public struct ImportTerminalNotice: Equatable, Sendable {
 /// Delivers a terminal import notice once, and records delivery only after the system accepts it.
 public final class ImportNotificationCoordinator: @unchecked Sendable {
   private let journal: LocalArchiveJournal
-  private let service: any ImportNotificationServing
+  private let service: any AgentNotificationServing
   private let inFlightLock = NSLock()
   private var inFlightEntries: Set<UUID> = []
 
-  public init(journal: LocalArchiveJournal, service: any ImportNotificationServing) {
+  public init(journal: LocalArchiveJournal, service: any AgentNotificationServing) {
     self.journal = journal
     self.service = service
   }
@@ -63,7 +48,7 @@ public final class ImportNotificationCoordinator: @unchecked Sendable {
           !currentObservation.terminalNoticeDelivered
     else { return false }
     do {
-      try await service.deliver(ImportTerminalNotice(presentation: currentObservation.presentation))
+      try await service.deliver(AgentNotification(presentation: currentObservation.presentation))
       _ = try journal.markBackendTerminalNoticeDelivered(
         entryID: entryID, operationID: currentObservation.operationID
       )
@@ -90,7 +75,7 @@ public final class ImportNotificationCoordinator: @unchecked Sendable {
 import UserNotifications
 
 /// macOS adapter: reads the existing permission decision and never requests permission itself.
-public struct UserNotificationImportService: ImportNotificationServing {
+public actor UserAgentNotificationService: AgentNotificationServing {
   private let center: UNUserNotificationCenter
 
   public init(center: UNUserNotificationCenter = .current()) {
@@ -105,7 +90,7 @@ public struct UserNotificationImportService: ImportNotificationServing {
     }
   }
 
-  public func deliver(_ notice: ImportTerminalNotice) async throws {
+  public func deliver(_ notice: AgentNotification) async throws {
     let content = UNMutableNotificationContent()
     content.title = notice.title
     content.body = notice.body

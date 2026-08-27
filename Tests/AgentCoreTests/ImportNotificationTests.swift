@@ -25,7 +25,7 @@ final class ImportNotificationTests: XCTestCase {
     XCTAssertTrue(firstDelivery)
     XCTAssertFalse(secondDelivery)
     let notices = await service.delivered
-    XCTAssertEqual(notices, [ImportTerminalNotice(presentation: .importedWithGaps(gapCount: 2))])
+    XCTAssertEqual(notices, [AgentNotification(presentation: .importedWithGaps(gapCount: 2))])
     XCTAssertFalse(notices[0].title.contains("chatgpt"))
     XCTAssertFalse(notices[0].body.contains("2"))
     XCTAssertTrue(journal.entries.first?.backendImport?.terminalNoticeDelivered ?? false)
@@ -67,22 +67,22 @@ final class ImportNotificationTests: XCTestCase {
   }
 }
 
-private actor RecordingNotificationService: ImportNotificationServing {
+private actor RecordingNotificationService: AgentNotificationServing {
   let configuredAuthorization: ImportNotificationAuthorization
-  var notices: [ImportTerminalNotice] = []
+  var notices: [AgentNotification] = []
 
   init(authorization: ImportNotificationAuthorization) {
     configuredAuthorization = authorization
   }
 
-  var delivered: [ImportTerminalNotice] { notices }
+  var delivered: [AgentNotification] { notices }
 
   func authorization() async -> ImportNotificationAuthorization { configuredAuthorization }
 
-  func deliver(_ notice: ImportTerminalNotice) async throws { notices.append(notice) }
+  func deliver(_ notice: AgentNotification) async throws { notices.append(notice) }
 }
 
-private actor GatedNotificationService: ImportNotificationServing {
+private actor GatedNotificationService: AgentNotificationServing {
   private var authorizationWaiters: [CheckedContinuation<Void, Never>] = []
   private var deliveryWaiters: [CheckedContinuation<Void, Never>] = []
   private var firstDeliveryWaiters: [CheckedContinuation<Void, Never>] = []
@@ -101,7 +101,7 @@ private actor GatedNotificationService: ImportNotificationServing {
     return .authorized
   }
 
-  func deliver(_: ImportTerminalNotice) async throws {
+  func deliver(_: AgentNotification) async throws {
     deliveryCount += 1
     if deliveryCount == 1 {
       let waiters = firstDeliveryWaiters

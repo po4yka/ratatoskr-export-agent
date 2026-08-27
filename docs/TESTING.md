@@ -7,7 +7,10 @@ Required tests:
 - Journal transaction/state handling against the current schema, crash at every transition, restart recovery, retry schedule, cancellation.
 - Keychain pairing/rotation/revoke and no-secret diagnostics.
 - Upload chunk/resume/idempotency, offline/timeout/TLS/error classification, backend operation polling.
-- Notification privacy and backup-age reminders.
+- Notification privacy plus watched-item reminder threshold, suppression, snooze, and rearm behavior.
+- Diagnostics assembly for mixed folder permission, notification, disk, journal, queue, and deferred-update states.
+- Support-report canaries proving default filename/path/content/URL/credential/full-digest redaction,
+  explicit per-item field inclusion, prohibited-value refusal, and preview-byte-identical local export.
 - App lifecycle, sleep/wake, sandbox/bookmark restoration, packaging, signing/notarization/update checks.
 - Workspace synthetic export-agent -> archive-service vertical flow.
 

@@ -5,6 +5,7 @@ import AppKit
 @MainActor
 enum AgentMenu {
   static let settingsTitle = "Settings…"
+  static let diagnosticsTitle = "Diagnostics…"
   static let quitTitle = "Quit Ratatoskr"
   static let uploadStatusItemTag = 71
   static let importStatusItemTag = 72
@@ -31,6 +32,14 @@ enum AgentMenu {
     )
     settingsItem.target = coordinator
     menu.addItem(settingsItem)
+
+    let diagnosticsItem = NSMenuItem(
+      title: diagnosticsTitle,
+      action: #selector(AgentMenuCoordinator.diagnosticsSelected),
+      keyEquivalent: ""
+    )
+    diagnosticsItem.target = coordinator
+    menu.addItem(diagnosticsItem)
 
     menu.addItem(.separator())
 
@@ -99,6 +108,15 @@ final class UploadMenuStatusBinding {
 @MainActor
 final class AgentMenuCoordinator: NSObject {
   private var settingsWindowController: SettingsWindowController?
+  private var diagnosticsWindowController: DiagnosticsWindowController?
+
+  @objc
+  func diagnosticsSelected() {
+    if diagnosticsWindowController == nil {
+      diagnosticsWindowController = DiagnosticsWindowController.makeDefault()
+    }
+    diagnosticsWindowController?.showDiagnostics()
+  }
 
   @objc
   func settingsSelected() {

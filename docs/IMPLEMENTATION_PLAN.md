@@ -8,7 +8,7 @@
 6. Add Platform device pairing with Keychain credential storage.
 7. Implement idempotent/resumable upload and offline retry queue.
 8. Track backend operation/completeness and present safe UI/notifications.
-9. Add reminders, permission/disk diagnostics, exportable redacted support report.
-10. Finalize sandbox/entitlements, signing, notarization, update model, and workspace integration.
+9. ✅ Add reminders, permission/disk diagnostics, and an exportable redacted support report.
+10. Finalize sandbox/entitlements, signing, notarization, the update model, and workspace integration.
 
 Definition of Done: synthetic exports survive crashes/offline/duplicates, local original remains intact, upload is verified/idempotent, secrets/content stay private, packaging and workspace flow pass. Deferred: provider login and automatic download links.

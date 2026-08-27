@@ -2,7 +2,7 @@
 
 `ratatoskr-export-agent` is the local macOS companion for importing official ChatGPT and Claude data exports into Ratatoskr. It watches a user-controlled inbox, identifies provider archives, verifies and submits them to the local Ratatoskr deployment, preserves the original files, and reports backup freshness and import completeness.
 
-> **Status:** bootstrap core delivered as a SwiftPM package: typed configuration loading, privacy-redacting logging, a menu-bar agent shell with a headless `--smoke` mode, watched-folder preferences backed by security-scoped bookmarks (Settings window with per-folder enable and archive-policy controls and actionable access-failure states), enforced size limits, an FSEvents-backed inbox watcher with debounced scans over enabled folders, completed/stable-file detection (quiet-period evidence, writer-hold probe where detectable, temporary-suffix exclusion, regular-file/size/readability gates) emitting stable candidates, streaming SHA-256 fingerprinting over bounded chunk reads, shallow archive classification (magic-byte container sniffing plus bounded central-directory/top-level-key probes labelling ChatGPT/Claude/Instagram/Threads candidates with confidence evidence), an immutable content-addressed local archive store with atomic temp-plus-rename publication, write-once duplicate recognition, a configurable disk budget with explicit over-budget refusal, and a bounded write-ahead local journal. The journal records durable transitions, replays interrupted uploads back to the same idempotency-keyed queue entry, and fails closed on corruption. Platform device pairing, rotating session credentials, macOS Keychain storage, durable authenticated operation polling, privacy-safe per-archive menu status, and permission-gated generic terminal notices are implemented. Network archive upload, reminders, background lifecycle wiring, LaunchAgent packaging, and signing remain pending.
+> **Status:** bootstrap core delivered as a SwiftPM package. It includes the menu-bar shell, watched-folder configuration and observation, completed-download checks, streaming fingerprinting, bounded classification, immutable local preservation, a fail-closed journal, resumable queue primitives, device pairing/Keychain support, operation polling, local reminders, and operational diagnostics. The Diagnostics panel reports folder and notification permissions, disk capacity, journal health, queue depth, and the deliberately deferred update state. It can preview and save a redacted-by-construction support report locally. Authenticated live archive upload composition, background lifecycle wiring, LaunchAgent packaging, signing, notarization, and the distribution-dependent update mechanism remain pending.
 
 > [!IMPORTANT]
 > **Ratatoskr is in development.** No database holds data that has to survive a schema change.
@@ -253,19 +253,24 @@ No telemetry containing archive names or personal content is sent to third parti
 User-visible diagnostics include:
 
 ```text
-inbox watcher status
-last scan time
-queued files
-upload progress
-operation progress
-last successful import
-snapshot age
-completeness status
-retry reason
-endpoint reachability
+watched-folder access counts
+notification authorization
+available disk capacity
+journal health and entry count
+queue depth by operational state
+update-check decision state
 ```
 
-Technical metrics/logs remain local and bounded. A diagnostic bundle must redact paths, tokens, archive filenames where sensitive, and all content.
+The status-menu Diagnostics panel reads these facts from the existing preferences and journal stores.
+Its support report uses a closed schema of digests, counters, sizes, and bounded states; by default it
+cannot encode filenames, paths, contents, credentials, full hashes, private errors, or endpoint URLs.
+The complete JSON is shown before the same bytes are atomically saved to a user-chosen local file.
+There is no report upload path. Per-item detail APIs require an explicit item-and-field selection and
+still reject filesystem paths and credentials.
+
+Watched-item reminders use an injected threshold and persist only opaque folder IDs plus suppression
+and snooze state. One continuing condition produces at most one generic notification, clears to rearm,
+and stays quiet when notifications are denied or the folder is snoozed.
 
 ## Non-goals
 
@@ -287,8 +292,8 @@ Technical metrics/logs remain local and bounded. A diagnostic bundle must redact
 5. Upload archives with idempotency and progress.
 6. Display provider import and completeness results.
 7. Add safe local archival and retry semantics.
-8. Add backup-age reminders and notifications.
-9. Add hardened sandbox, Keychain, and diagnostic behavior.
+8. Add local watched-item reminders and operational diagnostics. (Delivered)
+9. Add hardened sandbox, signing, notarization, and the distribution-selected update mechanism.
 10. Validate real ChatGPT and Claude export workflows end to end.
 
 ## Workspace integration
@@ -300,4 +305,7 @@ infrastructure.
 
 ## Project status
 
-This README defines the intended macOS export-ingestion companion. The package scaffold, typed configuration, redacting logger, menu-bar shell with smoke mode, watched-folder preferences with security-scoped bookmarks and a settings window, the inbox watcher over enabled folders, completed/stable-file detection, streaming SHA-256 fingerprinting, shallow provider classification, and the immutable content-addressed local archive store with atomic publication and disk budget exist today; the local journal, uploading, Keychain, notifications, and distribution packaging remain future work.
+This README defines the intended macOS export-ingestion companion. Local journal, Keychain,
+permission-gated notifications, watched-item reminder policy, diagnostics, and reviewed local support
+report export now exist alongside the watcher/archive bootstrap. Distribution packaging and its update
+model remain future work.

@@ -433,6 +433,11 @@ import incomplete
 
 Reminders can be monthly, weekly, or user-defined. They remind the user to request/download an official export; they do not automate provider login.
 
+The implemented watched-item reminder seam is narrower: an enabled folder becomes eligible when an
+unprocessed observation reaches its positive age threshold. The coordinator persists only opaque
+folder IDs, last-delivered condition, snooze time, and evaluation time. A continuing condition is
+delivered once, clearing the condition rearms it, and denied notification permission remains silent.
+
 Notifications may include:
 
 - new export detected;
@@ -584,6 +589,17 @@ journal_schema_failures
 
 Diagnostics are local-first and sanitized. Optional server telemetry sends only bounded operational metadata under user policy.
 
+The implemented Diagnostics panel assembles one immutable snapshot from security-scoped folder access,
+macOS notification authorization, current archive-volume capacity, local journal health, and a queue
+projection trusted only when the journal opens cleanly. Journal corruption reports
+`requiresAttention` and makes queue depth unavailable. Update checking is an inert
+`deferredPendingDistributionDecision` state: it has no endpoint, timer, entitlement, or network client.
+
+Support reports are redacted by construction rather than scrubbed after encoding. The default closed
+schema admits only application/build facts, bounded states and counters, byte sizes, local item IDs,
+and 12-character digest prefixes. A complete JSON preview precedes local atomic save, and export has no
+network seam. Optional detail selection is per item and field; paths and credentials remain prohibited.
+
 ## 26. Testing architecture
 
 ### Unit
@@ -594,6 +610,9 @@ Diagnostics are local-first and sanitized. Optional server telemetry sends only 
 - journal state transitions;
 - retry/backoff decisions;
 - freshness/reminder calculation;
+- reminder threshold, suppression, snooze, permission, and rearm behavior;
+- diagnostics state assembly with journal-corruption fail-closed behavior;
+- support-report default redaction, explicit field selection, and preview-byte export;
 - operation result mapping.
 
 ### Filesystem integration
@@ -678,8 +697,8 @@ Initial milestones:
 5. Platform import reservation and resumable upload.
 6. Operation tracking and completeness UI.
 7. Background resume and notifications.
-8. Reminder/freshness model.
-9. Signed/notarized distribution and current-schema tests.
-10. Diagnostics, recovery runbooks, and privacy audit.
+8. Watched-item reminder policy and operational diagnostics. (Delivered)
+9. Redacted, reviewable local support report export. (Delivered)
+10. Signed/notarized distribution, update mechanism, recovery runbooks, and privacy audit.
 
 Changes to provider-login policy, filesystem scope, device credential model, or automatic deletion require ADRs and coordinated workspace changesets.
