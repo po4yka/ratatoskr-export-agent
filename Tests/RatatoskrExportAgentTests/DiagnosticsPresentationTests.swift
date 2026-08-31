@@ -1,4 +1,5 @@
 import AgentCore
+import Foundation
 import XCTest
 
 @testable import RatatoskrExportAgent
@@ -32,5 +33,27 @@ final class DiagnosticsPresentationTests: XCTestCase {
     XCTAssertFalse(rendered.contains("/Users/private"))
     XCTAssertFalse(rendered.contains("https://archive.internal"))
     XCTAssertTrue(rendered.contains("Manual download; current version 1.2.3"))
+  }
+
+  func testDiagnosticsReadsTheProductRuntimeJournal() throws {
+    let support = FileManager.default.temporaryDirectory.appending(path: "diagnostics-\(UUID())")
+    let runtimeDirectory = support.appending(path: "ExportAgent")
+    try FileManager.default.createDirectory(at: runtimeDirectory, withIntermediateDirectories: true)
+    let journal = try LocalArchiveJournal.open(
+      at: runtimeDirectory.appending(path: "archive-journal.jsonl")
+    )
+    _ = try journal.discover(
+      fingerprint: ArchiveFingerprint(sha256Hex: String(repeating: "a", count: 64), byteSize: 1),
+      routing: appFixtureRouting(),
+      managedArchiveURL: runtimeDirectory.appending(path: "managed.zip")
+    )
+
+    let context = DiagnosticsSnapshotLoader.loadContext(
+      notificationAuthorization: .deniedOrUnavailable,
+      applicationSupportDirectory: support
+    )
+
+    XCTAssertEqual(context.entries.count, 1)
+    XCTAssertEqual(context.snapshot.journal, .healthy(entryCount: 1))
   }
 }

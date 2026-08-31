@@ -6,7 +6,7 @@ final class UploadQueueControlTests: XCTestCase {
   func testPauseCancelAndExplicitRetryPreserveArchiveIdentity() throws {
     let url = FileManager.default.temporaryDirectory.appending(path: "control-\(UUID().uuidString)")
     let journal = try LocalArchiveJournal.open(at: url)
-    var entry = try journal.discover(fingerprint: fingerprint)
+    var entry = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting())
     for state in [JournalState.archived, .hashed, .queued] {
       entry = try journal.advance(entryID: entry.id, to: state)
     }

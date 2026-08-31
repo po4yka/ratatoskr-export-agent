@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PairedDeviceIdentity: Equatable, Hashable, Sendable {
+public struct PairedDeviceIdentity: Codable, Equatable, Hashable, Sendable {
   public let origin: URL
   public let deviceID: UUID
   public let userID: UUID
@@ -116,6 +116,13 @@ public protocol DeviceCredentialStoring: Sendable {
   func save(_ credentials: DeviceCredentialSet, for identity: PairedDeviceIdentity) async throws
   func load(for identity: PairedDeviceIdentity) async throws -> DeviceCredentialSet?
   func remove(for identity: PairedDeviceIdentity) async throws
+}
+
+/// Supplies short-lived device authority at request time and owns bounded recovery after a 401.
+public protocol PlatformRequestAuthorizing: Sendable {
+  func credentialForRequest() async throws -> String
+  func recoverCredential(afterRejectedCredential credential: String) async throws -> String
+  func authorizationWasRejected(_ credential: String) async
 }
 
 public enum DevicePairingStatus: Equatable, Sendable {

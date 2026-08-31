@@ -1,3 +1,4 @@
+import AgentCore
 import AppKit
 
 @MainActor
@@ -23,4 +24,12 @@ func applyBootstrapPresentation() {
 @MainActor
 func isBootstrapPresentationInstalled() -> Bool {
   installedStatusItem != nil
+}
+
+@MainActor
+func installedAgentMenu() -> NSMenu? { installedStatusItem?.menu }
+
+@MainActor
+func installProductRuntime(_ graph: ProductRuntimeGraph) {
+  installedMenuCoordinator?.install(graph: graph)
 }

@@ -11,6 +11,14 @@ on:
         description: Positive integer bundle build version
         required: true
         type: string
+      source_revision:
+        description: Exact full commit SHA to build and release
+        required: true
+        type: string
+      release_tag:
+        description: Existing annotated tag, exactly v plus short_version
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,6 +29,8 @@ concurrency:
 
 jobs:
   notarized-app:
+    permissions:
+      contents: read
     runs-on: macos-15
     timeout-minutes: 60
     env:
@@ -31,10 +41,22 @@ jobs:
       APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
       RELEASE_SHORT_VERSION: ${{ inputs.short_version }}
       RELEASE_BUILD_VERSION: ${{ inputs.build_version }}
+      RELEASE_SOURCE_REVISION: ${{ inputs.source_revision }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.source_revision }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Validate immutable source and tag
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [ "$RELEASE_TAG" = "v$RELEASE_SHORT_VERSION" ]
+          [ "$(git rev-parse HEAD)" = "$(git rev-parse '${{ inputs.source_revision }}^{commit}')" ]
+          [ "$(git cat-file -t '${{ inputs.release_tag }}')" = "tag" ]
+          [ "$(git rev-parse '${{ inputs.release_tag }}^{commit}')" = "$(git rev-parse HEAD)" ]
       - name: Validate owner authorization
         run: scripts/distribution/validate-owner-secrets.sh
       - name: Build release executable
@@ -57,3 +79,54 @@ jobs:
             ${{ runner.temp }}/distribution/*.sha256
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    needs: notarized-app
+    runs-on: macos-15
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_SHORT_VERSION: ${{ inputs.short_version }}
+      RELEASE_SOURCE_REVISION: ${{ inputs.source_revision }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_revision }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Revalidate source, tag, and absent release
+        run: |
+          set -euo pipefail
+          [ "$(git rev-parse HEAD)" = "$(git rev-parse '${{ inputs.source_revision }}^{commit}')" ]
+          [ "$(git cat-file -t '${{ inputs.release_tag }}')" = "tag" ]
+          [ "$(git rev-parse '${{ inputs.release_tag }}^{commit}')" = "$(git rev-parse HEAD)" ]
+          response=$(gh api --include "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>&1) && {
+            echo "release already exists: $RELEASE_TAG" >&2
+            exit 1
+          }
+          grep -q '^HTTP/.* 404' <<<"$response" || {
+            printf '%s\n' "$response" >&2
+            exit 1
+          }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: RatatoskrExportAgent-${{ inputs.short_version }}-notarized
+          path: ${{ runner.temp }}/release-assets
+      - name: Verify and publish immutable release assets
+        working-directory: ${{ runner.temp }}/release-assets
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(./*.zip)
+          sums=(./*.sha256)
+          [ "${#zips[@]}" -eq 1 ] && [ "${#sums[@]}" -eq 1 ]
+          shasum -a 256 -c "${sums[0]}"
+          gh release create "$RELEASE_TAG" "${zips[0]}" "${sums[0]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --target "$RELEASE_SOURCE_REVISION" \
+            --title "Ratatoskr Export Agent $RELEASE_SHORT_VERSION" \
+            --notes "Signed and notarized Ratatoskr Export Agent $RELEASE_SHORT_VERSION."

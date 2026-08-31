@@ -6,7 +6,7 @@ final class UploadJournalCheckpointTests: XCTestCase {
   func testCheckpointSurvivesJournalReopenWithoutSecrets() throws {
     let url = FileManager.default.temporaryDirectory.appending(path: "journal-\(UUID().uuidString)")
     let journal = try LocalArchiveJournal.open(at: url)
-    var entry = try journal.discover(fingerprint: fingerprint)
+    var entry = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting())
     entry = try journal.advance(entryID: entry.id, to: .archived)
     entry = try journal.advance(entryID: entry.id, to: .hashed)
     entry = try journal.advance(entryID: entry.id, to: .queued)

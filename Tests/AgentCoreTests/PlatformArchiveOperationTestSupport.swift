@@ -21,7 +21,9 @@ func operationEntry(named: String) throws -> (LocalArchiveJournal, JournalEntry)
   )
   let sha256 = digest(bytes)
   var entry = try journal.discover(
-    fingerprint: ArchiveFingerprint(sha256Hex: sha256, byteSize: bytes.count), managedArchiveURL: archiveURL
+    fingerprint: ArchiveFingerprint(sha256Hex: sha256, byteSize: bytes.count),
+    routing: fixtureRouting(provider: .claude),
+    managedArchiveURL: archiveURL
   )
   for state in [JournalState.archived, .hashed, .queued] {
     entry = try journal.advance(entryID: entry.id, to: state)
@@ -35,12 +37,24 @@ final class FailingTransferTransport: @unchecked Sendable, PlatformArchiveOperat
   init(operationID: UUID) { self.operationID = operationID }
 
   func prepare(provider _: PlatformArchiveProvider, fingerprint _: ArchiveFingerprint, idempotencyKey _: String) async throws -> PlatformArchivePrepared {
-    PlatformArchivePrepared(operationID: operationID,
-      uploadPath: "/v1/ai-archives/claude/\(operationID.uuidString.lowercased())/content")
+    PlatformArchivePrepared(operationID: operationID)
   }
 
-  func transfer(provider _: PlatformArchiveProvider, prepared _: PlatformArchivePrepared,
-                archiveURL _: URL, fingerprint _: ArchiveFingerprint) async throws {
+  func openTransfer(
+    provider _: PlatformArchiveProvider, operationID _: UUID,
+    declaration _: BlobUploadDeclaration, idempotencyKey _: String
+  ) async throws -> BlobUploadSession {
     throw PlatformDeviceTransportError.unavailable
   }
+
+  func transferStatus(
+    provider _: PlatformArchiveProvider, operationID _: UUID, token _: String
+  ) async throws -> BlobUploadStatus { throw PlatformDeviceTransportError.unavailable }
+  func sendChunk(
+    provider _: PlatformArchiveProvider, operationID _: UUID,
+    token _: String, index _: Int, bytes _: Data
+  ) async throws { throw PlatformDeviceTransportError.unavailable }
+  func finalizeTransfer(
+    provider _: PlatformArchiveProvider, operationID _: UUID, token _: String
+  ) async throws -> BlobStoredReceipt { throw PlatformDeviceTransportError.unavailable }
 }

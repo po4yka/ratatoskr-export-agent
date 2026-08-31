@@ -39,7 +39,7 @@ final class JournalRecoveryTests: XCTestCase {
   }
 
   private func drive(_ journal: LocalArchiveJournal) throws {
-    var entry = try journal.discover(fingerprint: recoveryFingerprint)
+    var entry = try journal.discover(fingerprint: recoveryFingerprint, routing: fixtureRouting())
     for state in [.archived, .hashed, .queued, .uploading, .uploaded, .confirmed] as [JournalState] {
       entry = try journal.advance(entryID: entry.id, to: state)
     }
@@ -90,6 +90,7 @@ private func impossibleTransitionRecord() throws -> Data {
     fingerprint: recoveryFingerprint,
     id: UUID(),
     idempotencyKey: "ratatoskr-export-agent/sha256/\(recoveryFingerprint.sha256Hex)",
+    routing: fixtureRouting(),
     state: .archived
   )
   let encoder = JSONEncoder()
@@ -111,6 +112,7 @@ private struct RecoveryWireEntry: Codable {
   let fingerprint: ArchiveFingerprint
   let id: UUID
   let idempotencyKey: String
+  let routing: ArchiveRouting
   let state: JournalState
 }
 

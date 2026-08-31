@@ -68,6 +68,7 @@ final class OperationalDiagnosticsTests: XCTestCase {
       id: UUID(),
       fingerprint: fingerprint,
       idempotencyKey: "ratatoskr-export-agent/sha256/\(fingerprint.sha256Hex)",
+      routing: fixtureRouting(),
       state: .queued
     )
   }

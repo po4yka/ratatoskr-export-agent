@@ -10,7 +10,7 @@ final class UploadQueueIntegrationTests: XCTestCase {
     let fingerprint = ArchiveFingerprint(sha256Hex: digest(bytes), byteSize: bytes.count)
     let journalURL = FileManager.default.temporaryDirectory.appending(path: "queue-\(UUID().uuidString)")
     let journal = try LocalArchiveJournal.open(at: journalURL)
-    var entry = try journal.discover(fingerprint: fingerprint, managedArchiveURL: archiveURL)
+    var entry = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting(), managedArchiveURL: archiveURL)
     for state in [JournalState.archived, .hashed, .queued] {
       entry = try journal.advance(entryID: entry.id, to: state)
     }
@@ -48,7 +48,7 @@ final class UploadQueueIntegrationTests: XCTestCase {
     let journal = try LocalArchiveJournal.open(
       at: FileManager.default.temporaryDirectory.appending(path: "bandwidth-\(UUID().uuidString)")
     )
-    var entry = try journal.discover(fingerprint: fingerprint, managedArchiveURL: archiveURL)
+    var entry = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting(), managedArchiveURL: archiveURL)
     for state in [JournalState.archived, .hashed, .queued] {
       entry = try journal.advance(entryID: entry.id, to: state)
     }
@@ -84,7 +84,7 @@ final class UploadQueueIntegrationTests: XCTestCase {
     let journal = try LocalArchiveJournal.open(
       at: FileManager.default.temporaryDirectory.appending(path: "permanent-\(UUID().uuidString)")
     )
-    var entry = try journal.discover(fingerprint: fingerprint, managedArchiveURL: archiveURL)
+    var entry = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting(), managedArchiveURL: archiveURL)
     for state in [JournalState.archived, .hashed, .queued] {
       entry = try journal.advance(entryID: entry.id, to: state)
     }

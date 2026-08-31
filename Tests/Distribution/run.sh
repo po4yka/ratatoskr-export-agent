@@ -9,3 +9,4 @@ test_root=$(cd "$(dirname "$0")" && pwd)
 "$test_root/SandboxSmokeTests.sh"
 "$test_root/OwnerSecretValidationTests.sh"
 "$test_root/WorkflowContractTests.sh"
+"$test_root/CleanMachineAcceptanceTests.sh"

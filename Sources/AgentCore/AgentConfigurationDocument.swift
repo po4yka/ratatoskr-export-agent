@@ -93,17 +93,10 @@ struct RawDocument: Decodable {
   }
 
   private static func isPermittedBackendEndpoint(_ url: URL) -> Bool {
-    guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else {
-      return false
-    }
-    if scheme == "https" {
-      return true
-    }
-    var host = url.host ?? ""
-    if host.hasPrefix("["), host.hasSuffix("]"), host.count >= 2 {
-      host = String(host.dropFirst().dropLast())
-    }
-    return host == "localhost" || host == "127.0.0.1" || host == "::1"
+    url.scheme?.lowercased() == "https" && url.host != nil
+      && url.user == nil && url.password == nil
+      && (url.path.isEmpty || url.path == "/")
+      && url.query == nil && url.fragment == nil
   }
 }
 

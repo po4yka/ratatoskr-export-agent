@@ -37,11 +37,32 @@ test_distribution_workflow_is_fail_closed() {
   }
 
   require_pattern '^  workflow_dispatch:' "$workflow" || return 1
-  if grep -Eq '^  (push|pull_request|release|schedule):' "$workflow"; then
+  if grep -Eq '^  (push|pull_request|schedule):' "$workflow"; then
     echo "owner-authorized distribution must be manually triggered" >&2
     return 1
   fi
   require_pattern 'actions/upload-artifact@[0-9a-f]{40}' "$workflow" || return 1
+  require_pattern '^      source_revision:' "$workflow" || return 1
+  require_pattern '^      release_tag:' "$workflow" || return 1
+  require_pattern 'ref:.*inputs\.source_revision' "$workflow" || return 1
+  require_pattern 'git rev-parse.*inputs\.source_revision' "$workflow" || return 1
+  require_pattern 'git rev-parse.*release_tag' "$workflow" || return 1
+  require_pattern 'git cat-file -t.*release_tag' "$workflow" || return 1
+  require_pattern '^  release:' "$workflow" || return 1
+  require_pattern 'contents: write' "$workflow" || return 1
+  require_pattern 'actions/download-artifact@[0-9a-f]{40}' "$workflow" || return 1
+  require_pattern 'shasum -a 256 -c' "$workflow" || return 1
+  require_pattern 'gh api.*releases/tags' "$workflow" || return 1
+  require_pattern 'gh release create' "$workflow" || return 1
+
+  local release_job_line release_create_line
+  release_job_line=$(grep -n '^  release:' "$workflow" | cut -d: -f1)
+  release_create_line=$(grep -n 'gh release create' "$workflow" | cut -d: -f1)
+  [[ "$release_job_line" -lt "$release_create_line" ]] || return 1
+  if sed -n "1,$((release_job_line - 1))p" "$workflow" | grep -Eq 'contents: write'; then
+    echo "only the final release job may receive contents: write" >&2
+    return 1
+  fi
 
   local name
   for name in \

@@ -67,4 +67,44 @@ final class InboxWatchCoordinatorTests: XCTestCase {
       "no candidate may ever originate from a disabled folder, whatever time passes")
     await fulfillment(of: [passes], timeout: 5)
   }
+
+  func testFailedCandidateProcessingIsRetriedBeforeCandidateIsCompleted() async {
+    let scenario = WatchScenario()
+    let folder = WatchScenario.folderURL(named: "retry-processing")
+    _ = scenario.addCandidate(named: "export.zip", in: folder, byteSize: 512)
+    let target = WatchedFolderTarget(id: UUID(), url: folder, isEnabled: true)
+    let attempts = CandidateProcessingAttempts()
+    let coordinator = scenario.makeCoordinator(
+      targets: [target],
+      candidateHandler: { candidate in await attempts.process(candidate) }
+    )
+
+    await coordinator.start()
+    scenario.clock.advance(by: 30)
+    scenario.tickScheduler.runPending()
+    await attempts.wait(for: 1)
+
+    await coordinator.reconcile()
+    await attempts.wait(for: 2)
+
+    let finalCount = await attempts.count
+    XCTAssertEqual(finalCount, 2)
+    await coordinator.stop()
+  }
+}
+
+private actor CandidateProcessingAttempts {
+  private(set) var count = 0
+
+  func process(_: StableArchiveCandidate) -> Bool {
+    count += 1
+    return count > 1
+  }
+
+  func wait(for expected: Int) async {
+    for _ in 0..<10_000 {
+      if count >= expected { return }
+      await Task.yield()
+    }
+  }
 }

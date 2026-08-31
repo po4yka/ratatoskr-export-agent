@@ -29,10 +29,10 @@ extension UploadQueue {
     guard let queued = journal.entries.first(where: { $0.id == entryID }), isEligible(queued, at: now), let path = queued.managedArchivePath else { return }
     _ = try journal.advance(entryID: entryID, to: .uploading)
     publishStatus()
-    if let operationTransport, let operationProvider {
+    if let operationTransport {
       try await transferOperation(
         entryID: entryID, queued: queued, archiveURL: URL(filePath: path),
-        provider: operationProvider, transport: operationTransport
+        provider: queued.routing.provider, transport: operationTransport
       )
       return
     }
@@ -71,12 +71,34 @@ extension UploadQueue {
     provider: PlatformArchiveProvider,
     transport: any PlatformArchiveOperationTransport
   ) async throws {
-    let prepared = try await transport.prepare(
-      provider: provider, fingerprint: queued.fingerprint, idempotencyKey: queued.idempotencyKey
-    )
-    _ = try journal.bindBackendOperation(entryID: entryID, operationID: prepared.operationID)
-    try await transport.transfer(
-      provider: provider, prepared: prepared, archiveURL: archiveURL, fingerprint: queued.fingerprint
+    let operationID: UUID
+    if let existing = queued.operationID {
+      operationID = existing
+    } else {
+      let prepared = try await transport.prepare(
+        provider: provider, fingerprint: queued.fingerprint, idempotencyKey: queued.idempotencyKey
+      )
+      operationID = prepared.operationID
+      _ = try journal.bindBackendOperation(entryID: entryID, operationID: operationID)
+    }
+    let session = queued.uploadCheckpoint.flatMap { checkpoint in
+      checkpoint.resumptionToken.map {
+        BlobUploadSession(token: $0, chunkSizeBytes: checkpoint.chunkSizeBytes)
+      }
+    }
+    _ = try await ResumableArchiveUploader(chunkSize: chunkSize).upload(
+      archiveURL: archiveURL, fingerprint: queued.fingerprint, mediaType: "application/zip",
+      idempotencyKey: queued.idempotencyKey, checkpoint: session,
+      transport: OperationReceiptTransport(
+        provider: provider, operationID: operationID, transport: transport
+      ),
+      didOpenSession: { session in
+        try await self.persistAcknowledgement(entryID: entryID, session: session, indices: [])
+      },
+      didAcknowledge: { session, indices in
+        try await self.persistAcknowledgement(entryID: entryID, session: session, indices: indices)
+      },
+      admitChunk: { bytes in await self.limiter.reserveBytes(bytes: bytes) }
     )
     _ = try journal.advance(entryID: entryID, to: .uploaded)
     publishStatus()

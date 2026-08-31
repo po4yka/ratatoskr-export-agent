@@ -2,11 +2,12 @@ import Foundation
 
 /// Append-only local state for preserved archive work. Every successful
 /// mutation is synchronized before it becomes observable from this instance.
-public final class LocalArchiveJournal {
+public final class LocalArchiveJournal: @unchecked Sendable {
   let url: URL
   let maximumBytes: Int
   let didDurablyWrite: JournalDurabilityHook
   var projection: [UUID: JournalEntry]
+  let lock = NSRecursiveLock()
 
   private init(
     url: URL,
@@ -42,75 +43,14 @@ public final class LocalArchiveJournal {
 
   /// The stable, deterministic view of every active archive entry.
   public var entries: [JournalEntry] {
-    projection.values.sorted { $0.id.uuidString < $1.id.uuidString }
-  }
-
-  /// Starts tracking a unique archive digest in the discovered state.
-  @discardableResult
-  public func discover(fingerprint: ArchiveFingerprint, managedArchiveURL: URL? = nil) throws -> JournalEntry {
-    guard JournalIdentity.isValid(fingerprint) else {
-      throw LocalJournalError.invalidFingerprint
-    }
-    guard !projection.values.contains(where: { $0.fingerprint == fingerprint }) else {
-      throw LocalJournalError.duplicateDigest(digestPrefix: String(fingerprint.sha256Hex.prefix(12)))
-    }
-    let entry = JournalEntry(
-      id: UUID(),
-      fingerprint: fingerprint,
-      idempotencyKey: JournalIdentity.idempotencyKey(for: fingerprint),
-      state: .discovered,
-      managedArchivePath: managedArchiveURL?.path
-    )
-    try persist(.transition(entry))
-    projection[entry.id] = entry
-    try compactIfNeeded()
-    return entry
-  }
-
-  /// Advances one entry along the only accepted archive lifecycle.
-  @discardableResult
-  public func advance(entryID: UUID, to state: JournalState) throws -> JournalEntry {
-    guard let previous = projection[entryID] else {
-      throw LocalJournalError.missingEntry
-    }
-    guard previous.state.allowsTransition(toward: state) else {
-      throw LocalJournalError.invalidTransition(from: previous.state, nextState: state)
-    }
-    let entry = JournalEntry(
-      id: previous.id,
-      fingerprint: previous.fingerprint,
-      idempotencyKey: previous.idempotencyKey,
-      state: state,
-      uploadCheckpoint: previous.uploadCheckpoint,
-      backendImport: previous.backendImport,
-      managedArchivePath: previous.managedArchivePath
-    )
-    try persist(.transition(entry))
-    projection[entry.id] = entry
-    try compactIfNeeded()
-    return entry
-  }
-
-  /// Persists receipt-session facts without changing the lifecycle state.
-  @discardableResult
-  public func checkpoint(entryID: UUID, upload: UploadCheckpoint?) throws -> JournalEntry {
-    guard let previous = projection[entryID] else { throw LocalJournalError.missingEntry }
-    guard previous.state == .queued || previous.state == .uploading else {
-      throw LocalJournalError.invalidTransition(from: previous.state, nextState: previous.state)
-    }
-    let entry = JournalEntry(
-      id: previous.id, fingerprint: previous.fingerprint,
-      idempotencyKey: previous.idempotencyKey, state: previous.state, uploadCheckpoint: upload,
-      backendImport: previous.backendImport,
-      managedArchivePath: previous.managedArchivePath
-    )
-    try persist(.checkpoint(entry))
-    projection[entry.id] = entry
-    try compactIfNeeded()
-    return entry
+    lock.lock()
+    defer { lock.unlock() }
+    return projection.values.sorted { $0.id.uuidString < $1.id.uuidString }
   }
 
   func persist(_ record: JournalRecord) throws {
+    lock.lock()
+    defer { lock.unlock() }
     try JournalFile.append(record, to: url)
     if let entry = record.entry {
       try didDurablyWrite(entry.state)
@@ -118,12 +58,16 @@ public final class LocalArchiveJournal {
   }
 
   private func recoverInterruptedUploads() throws {
+    lock.lock()
+    defer { lock.unlock() }
     for entry in entries where entry.state == .uploading {
       let recovered = JournalEntry(
         id: entry.id,
         fingerprint: entry.fingerprint,
         idempotencyKey: entry.idempotencyKey,
+        routing: entry.routing,
         state: .queued,
+        operationID: entry.operationID,
         uploadCheckpoint: entry.uploadCheckpoint,
         backendImport: entry.backendImport,
         managedArchivePath: entry.managedArchivePath
@@ -135,6 +79,8 @@ public final class LocalArchiveJournal {
   }
 
   func compactIfNeeded() throws {
+    lock.lock()
+    defer { lock.unlock() }
     try JournalFile.compact(projection, at: url, maximumBytes: maximumBytes)
   }
 }

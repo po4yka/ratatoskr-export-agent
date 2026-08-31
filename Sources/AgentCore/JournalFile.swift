@@ -6,6 +6,7 @@ enum JournalRecordKind: String, Codable {
   case recovery
   case checkpoint
   case backendObservation
+  case operationBinding
   case snapshot
 }
 
@@ -28,6 +29,10 @@ struct JournalRecord: Codable {
 
   static func backendObservation(_ entry: JournalEntry) -> JournalRecord {
     JournalRecord(kind: .backendObservation, entry: entry, entries: nil)
+  }
+
+  static func operationBinding(_ entry: JournalEntry) -> JournalRecord {
+    JournalRecord(kind: .operationBinding, entry: entry, entries: nil)
   }
 
   static func snapshot(_ entries: [JournalEntry]) -> JournalRecord {
@@ -123,17 +128,23 @@ enum JournalFile {
       return
     }
     let keepsIdentity = previous.fingerprint == entry.fingerprint &&
-      previous.idempotencyKey == entry.idempotencyKey
+      previous.idempotencyKey == entry.idempotencyKey && previous.routing == entry.routing
     let normalTransition = record.kind == .transition &&
       previous.state.allowsTransition(toward: entry.state)
     let recoveryTransition = record.kind == .recovery && previous.state == .uploading &&
       entry.state == .queued
     let checkpointTransition = record.kind == .checkpoint && previous.state == entry.state &&
       (entry.state == .queued || entry.state == .uploading)
+    let operationBinding = record.kind == .operationBinding && previous.state == entry.state &&
+      previous.operationID == nil && entry.operationID != nil &&
+      previous.uploadCheckpoint == entry.uploadCheckpoint && previous.backendImport == entry.backendImport
     let backendObservation = record.kind == .backendObservation && previous.state == entry.state &&
       previous.uploadCheckpoint == entry.uploadCheckpoint &&
+      (previous.operationID == entry.operationID || previous.operationID == nil) &&
       isValidBackendObservationTransition(from: previous.backendImport, to: entry.backendImport)
-    guard keepsIdentity, normalTransition || recoveryTransition || checkpointTransition || backendObservation else {
+    guard keepsIdentity,
+          normalTransition || recoveryTransition || checkpointTransition || operationBinding || backendObservation
+    else {
       throw LocalJournalError.safeStop(.impossibleTransition)
     }
     projection[entry.id] = entry

@@ -102,10 +102,28 @@ extension InboxWatchCoordinator {
   }
 
   private func deliver(_ candidate: StableArchiveCandidate, path: String) {
-    completedCandidates[path] = candidate
-    pendingPaths.remove(path)
-    candidateFolders.removeValue(forKey: path)
-    onCandidate(candidate)
+    guard processingTasks[path] == nil else { return }
+    let handler = onCandidate
+    processingTasks[path] = Task { [weak self] in
+      let succeeded = await handler(candidate)
+      await self?.finishProcessing(candidate, path: path, succeeded: succeeded)
+    }
+  }
+
+  private func finishProcessing(
+    _ candidate: StableArchiveCandidate,
+    path: String,
+    succeeded: Bool
+  ) {
+    processingTasks.removeValue(forKey: path)
+    guard isWatching, candidateFolders[path] == candidate.folderID else { return }
+    if succeeded {
+      completedCandidates[path] = candidate
+      pendingPaths.remove(path)
+      candidateFolders.removeValue(forKey: path)
+    } else {
+      scheduleNextReassessmentIfNecessary()
+    }
   }
 
   /// Stops observing one degraded folder and forgets its pending

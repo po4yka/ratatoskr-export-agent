@@ -23,6 +23,7 @@ final class ImportStatusMenuTests: XCTestCase {
       id: entryID,
       fingerprint: ArchiveFingerprint(sha256Hex: String(repeating: "c", count: 64), byteSize: 1),
       idempotencyKey: "ratatoskr-export-agent/sha256/\(String(repeating: "c", count: 64))",
+      routing: appFixtureRouting(),
       state: .uploaded,
       backendImport: BackendImportObservation(
         operationID: UUID(uuidString: "00000000-0000-0000-0000-000000000099")!,

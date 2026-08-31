@@ -60,6 +60,16 @@ final class FolderSettingsViewModelTests: XCTestCase {
       registry.folders.first?.archivePolicy, .preserveInPlace,
       "the policy change must persist through the registry")
   }
+
+  func testSuccessfulSettingsChangeNotifiesTheLiveRuntime() throws {
+    let (registry, id) = try makePopulatedRegistry()
+    var changes = 0
+    let viewModel = FolderSettingsViewModel(registry: registry) { changes += 1 }
+
+    viewModel.setEnabled(false, id: id)
+
+    XCTAssertEqual(changes, 1)
+  }
 }
 
 private struct StubError: Error {}

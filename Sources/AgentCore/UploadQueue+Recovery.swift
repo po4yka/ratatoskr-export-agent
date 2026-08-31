@@ -77,7 +77,7 @@ extension UploadQueue {
     }
     // A returned operation ID is a durable recovery key. Do not create or send a second upload
     // while its authoritative Platform result can still be polled.
-    guard entry.backendImport == nil else { return false }
+    guard entry.backendImport?.presentation.isTerminal != true else { return false }
     guard (entry.uploadCheckpoint?.control ?? .active) == .active else { return false }
     return (entry.uploadCheckpoint?.nextRetryAt ?? .distantPast) <= now
   }

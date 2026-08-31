@@ -138,6 +138,7 @@ extension SupportReportRedactionTests {
       id: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!,
       fingerprint: fingerprint,
       idempotencyKey: "ratatoskr-export-agent/sha256/\(fullDigest)",
+      routing: fixtureRouting(),
       state: .queued,
       uploadCheckpoint: UploadCheckpoint(
         resumptionToken: credentialURL(path: "/private-export.zip?content=PRIVATE_MESSAGE"),

@@ -21,10 +21,16 @@ final class FolderSettingsViewModel: ObservableObject {
 
   private let registry: WatchedFolderRegistry
   private let picker: any FolderPicking
+  private let onChange: () -> Void
 
-  init(registry: WatchedFolderRegistry, picker: any FolderPicking = OpenPanelFolderPicker()) {
+  init(
+    registry: WatchedFolderRegistry,
+    picker: any FolderPicking = OpenPanelFolderPicker(),
+    onChange: @escaping () -> Void = {}
+  ) {
     self.registry = registry
     self.picker = picker
+    self.onChange = onChange
     refresh()
   }
 
@@ -34,6 +40,7 @@ final class FolderSettingsViewModel: ObservableObject {
     do {
       _ = try registry.addFolder(at: url)
       changeFailure = nil
+      onChange()
     } catch {
       changeFailure = "The folder could not be added."
     }
@@ -57,6 +64,7 @@ final class FolderSettingsViewModel: ObservableObject {
     do {
       try registry.setEnabled(enabled, for: id)
       changeFailure = nil
+      onChange()
     } catch {
       changeFailure = "The change could not be saved."
     }
@@ -67,6 +75,7 @@ final class FolderSettingsViewModel: ObservableObject {
     do {
       try registry.setArchivePolicy(policy, for: id)
       changeFailure = nil
+      onChange()
     } catch {
       changeFailure = "The change could not be saved."
     }
@@ -76,6 +85,7 @@ final class FolderSettingsViewModel: ObservableObject {
   /// Removes an already-confirmed folder entry through the registry.
   func removeConfirmed(id: UUID) {
     registry.removeFolder(id: id)
+    onChange()
     refresh()
   }
 }

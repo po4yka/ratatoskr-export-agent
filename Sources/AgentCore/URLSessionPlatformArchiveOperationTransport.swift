@@ -1,105 +1,143 @@
 import Foundation
 
-/// HTTPS client for Platform's operation-bound archive endpoints.
+/// Strict HTTPS client for Platform's operation-owned resumable archive routes.
 public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
   private let origin: URL
-  private let accessCredential: String
-  private let session: URLSession
+  private let client: AuthenticatedPlatformHTTPClient
 
-  public init(origin: URL, accessCredential: String) {
+  public init(origin: URL, authorizer: any PlatformRequestAuthorizing) {
     self.origin = origin
-    self.accessCredential = accessCredential
     let blocker = PlatformRedirectBlocker()
-    session = URLSession(configuration: .ephemeral, delegate: blocker, delegateQueue: nil)
+    let session = URLSession(configuration: .ephemeral, delegate: blocker, delegateQueue: nil)
+    client = AuthenticatedPlatformHTTPClient(authorizer: authorizer, session: session)
   }
 
-  init(origin: URL, accessCredential: String, session: URLSession) {
+  init(
+    origin: URL,
+    authorizer: any PlatformRequestAuthorizing,
+    session: URLSession
+  ) {
     self.origin = origin
-    self.accessCredential = accessCredential
-    self.session = session
+    client = AuthenticatedPlatformHTTPClient(authorizer: authorizer, session: session)
   }
 
   public func prepare(
-    provider: PlatformArchiveProvider,
-    fingerprint: ArchiveFingerprint,
-    idempotencyKey: String
+    provider: PlatformArchiveProvider, fingerprint: ArchiveFingerprint, idempotencyKey: String
   ) async throws -> PlatformArchivePrepared {
-    guard let endpoint = URLSessionPlatformDeviceTransport.endpoint(
-      for: origin, path: "v1/ai-archives/\(provider.rawValue)"
-    ) else { throw PlatformDeviceTransportError.invalidOrigin }
-    var request = URLRequest(url: endpoint)
-    request.httpMethod = "POST"
-    request.setValue("Bearer \(accessCredential)", forHTTPHeaderField: "Authorization")
+    var request = try request(path: "v1/ai-archives/\(provider.rawValue)", method: "POST")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
-    request.httpBody = try JSONEncoder().encode(PrepareBody(
-      sha256: fingerprint.sha256Hex, byteSize: fingerprint.byteSize
-    ))
+    request.httpBody = try JSONEncoder().encode(
+      PrepareBody(
+        sha256: fingerprint.sha256Hex, byteSize: fingerprint.byteSize
+      ))
     let (data, response) = try await perform(request)
-    guard response.statusCode == 202 else { throw response.error }
-    let prepared: PrepareResponse
-    do { prepared = try JSONDecoder().decode(PrepareResponse.self, from: data) } catch {
+    guard response.statusCode == 202 else { throw response.transportError }
+    let body = try decode(PrepareResponse.self, from: data)
+    guard body.status == "accepted", let operationID = UUID(uuidString: body.operationID) else {
       throw PlatformDeviceTransportError.invalidResponse
     }
-    guard prepared.status == "accepted", let operationID = UUID(uuidString: prepared.operationID),
-          prepared.uploadPath == "/v1/ai-archives/\(provider.rawValue)/\(operationID.uuidString.lowercased())/content"
-    else { throw PlatformDeviceTransportError.invalidResponse }
-    return PlatformArchivePrepared(operationID: operationID, uploadPath: prepared.uploadPath)
+    return PlatformArchivePrepared(operationID: operationID)
   }
 
-  public func transfer(
-    provider _: PlatformArchiveProvider,
-    prepared: PlatformArchivePrepared,
-    archiveURL: URL,
-    fingerprint _: ArchiveFingerprint
-  ) async throws {
-    guard let endpoint = URLSessionPlatformDeviceTransport.endpoint(
-      for: origin, path: String(prepared.uploadPath.dropFirst())
-    ) else { throw PlatformDeviceTransportError.invalidOrigin }
-    var request = URLRequest(url: endpoint)
-    request.httpMethod = "PUT"
-    request.setValue("Bearer \(accessCredential)", forHTTPHeaderField: "Authorization")
-    request.setValue("application/zip", forHTTPHeaderField: "Content-Type")
-    let (_, response): (Data, URLResponse)
-    do { (_, response) = try await session.upload(for: request, fromFile: archiveURL) } catch {
-      throw PlatformDeviceTransportError.unavailable
+  public func openTransfer(
+    provider: PlatformArchiveProvider, operationID: UUID,
+    declaration: BlobUploadDeclaration, idempotencyKey: String
+  ) async throws -> BlobUploadSession {
+    var request = try request(path: transferPath(provider, operationID), method: "POST")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+    request.httpBody = try JSONEncoder().encode(declaration)
+    let (data, response) = try await perform(request)
+    guard response.statusCode == 201 || response.statusCode == 200 else {
+      throw response.transportError
     }
-    guard let response = response as? HTTPURLResponse else {
+    let body = try decode(OpenTransferResponse.self, from: data)
+    guard !body.resumptionToken.isEmpty, body.chunkSizeBytes > 0 else {
       throw PlatformDeviceTransportError.invalidResponse
     }
-    guard (200 ..< 300).contains(response.statusCode) else { throw response.error }
+    return BlobUploadSession(token: body.resumptionToken, chunkSizeBytes: body.chunkSizeBytes)
+  }
+
+  public func transferStatus(
+    provider: PlatformArchiveProvider, operationID: UUID, token: String
+  ) async throws -> BlobUploadStatus {
+    let request = try request(
+      path: "\(transferPath(provider, operationID))/\(token)/status", method: "GET"
+    )
+    let (data, response) = try await perform(request)
+    guard response.statusCode == 200 else { throw response.transportError }
+    let body = try decode(TransferStatusResponse.self, from: data)
+    guard body.resumptionToken == token else {
+      throw PlatformDeviceTransportError.invalidResponse
+    }
+    return BlobUploadStatus(receivedIndices: Set(body.receivedChunks))
+  }
+
+  public func sendChunk(
+    provider: PlatformArchiveProvider, operationID: UUID, token: String,
+    index: Int, bytes: Data
+  ) async throws {
+    var request = try request(
+      path: "\(transferPath(provider, operationID))/\(token)/chunks/\(index)", method: "PUT"
+    )
+    request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+    request.httpBody = bytes
+    let (_, response) = try await perform(request)
+    guard response.statusCode == 204 || response.statusCode == 200 else {
+      throw response.transportError
+    }
+  }
+
+  public func finalizeTransfer(
+    provider: PlatformArchiveProvider, operationID: UUID, token: String
+  ) async throws -> BlobStoredReceipt {
+    var request = try request(
+      path: "\(transferPath(provider, operationID))/\(token)/finalize", method: "POST"
+    )
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONEncoder().encode(FinalizeRequest(resumptionToken: token))
+    let (data, response) = try await perform(request)
+    guard response.statusCode == 200 else { throw response.transportError }
+    let body = try decode(FinalizeResponse.self, from: data)
+    guard body.outcome == "stored", let blob = body.blobRef,
+      blob.digest.algorithm == "sha256"
+    else {
+      throw BlobReceiptTransportError.invalidReceipt
+    }
+    return BlobStoredReceipt(
+      sha256Hex: blob.digest.hex,
+      byteSize: blob.lengthBytes,
+      reference: "\(blob.ownerService):sha256:\(blob.digest.hex)"
+    )
+  }
+
+  private func request(path: String, method: String) throws -> URLRequest {
+    guard let endpoint = URLSessionPlatformDeviceTransport.endpoint(for: origin, path: path) else {
+      throw PlatformDeviceTransportError.invalidOrigin
+    }
+    var request = URLRequest(url: endpoint)
+    request.httpMethod = method
+    return request
+  }
+
+  private func transferPath(_ provider: PlatformArchiveProvider, _ operationID: UUID) -> String {
+    "v1/ai-archives/\(provider.rawValue)/\(operationID.uuidString.lowercased())/uploads"
   }
 
   private func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-    let data: Data
-    let response: URLResponse
-    do { (data, response) = try await session.data(for: request) } catch {
-      throw PlatformDeviceTransportError.unavailable
-    }
-    guard let response = response as? HTTPURLResponse else {
+    try await client.perform(request)
+  }
+
+  private func decode<Value: Decodable>(_ type: Value.Type, from data: Data) throws -> Value {
+    do { return try JSONDecoder().decode(type, from: data) } catch {
       throw PlatformDeviceTransportError.invalidResponse
     }
-    return (data, response)
   }
 }
 
-private extension HTTPURLResponse {
-  var error: PlatformDeviceTransportError {
+extension HTTPURLResponse {
+  fileprivate var transportError: PlatformDeviceTransportError {
     statusCode == 401 ? .refused : .unavailable
-  }
-}
-
-private struct PrepareBody: Encodable {
-  let sha256: String
-  let byteSize: Int
-  enum CodingKeys: String, CodingKey { case sha256; case byteSize = "byte_size" }
-}
-
-private struct PrepareResponse: Decodable {
-  let operationID: String
-  let status: String
-  let uploadPath: String
-  enum CodingKeys: String, CodingKey {
-    case operationID = "operation_id"; case status; case uploadPath = "upload_path"
   }
 }

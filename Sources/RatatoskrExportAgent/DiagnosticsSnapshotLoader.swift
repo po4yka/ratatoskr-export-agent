@@ -15,9 +15,10 @@ enum DiagnosticsSnapshotLoader {
   }
 
   static func loadContext(
-    notificationAuthorization: ImportNotificationAuthorization
+    notificationAuthorization: ImportNotificationAuthorization,
+    applicationSupportDirectory suppliedDirectory: URL? = nil
   ) -> DiagnosticsSnapshotContext {
-    let directory = applicationSupportDirectory()
+    let directory = suppliedDirectory ?? applicationSupportDirectory()
     let registry = try? WatchedFolderRegistry(
       preferencesStore: FileFolderPreferencesStore(
         fileURL: directory.appendingPathComponent("folder-preferences.json")
@@ -26,7 +27,7 @@ enum DiagnosticsSnapshotLoader {
     )
     let folderAccess = registry?.folders.map { registry?.accessState(for: $0.id) ?? .denied } ?? []
     let journalContext = journalDiagnostics(
-      at: directory.appendingPathComponent("archive-journal.ndjson")
+      at: directory.appending(path: "ExportAgent/archive-journal.jsonl")
     )
     let snapshot = OperationalDiagnosticsAssembler.assemble(
       folderAccess: folderAccess,
@@ -52,10 +53,11 @@ enum DiagnosticsSnapshotLoader {
   }
 
   private static func applicationSupportDirectory() -> URL {
-    let root = FileManager.default.urls(
-      for: .applicationSupportDirectory,
-      in: .userDomainMask
-    ).first ?? FileManager.default.temporaryDirectory
+    let root =
+      FileManager.default.urls(
+        for: .applicationSupportDirectory,
+        in: .userDomainMask
+      ).first ?? FileManager.default.temporaryDirectory
     let directory = root.appendingPathComponent("Ratatoskr", isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     return directory

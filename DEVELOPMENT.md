@@ -1,17 +1,17 @@
 # Developing Ratatoskr Export Agent
 
 > Status: Active
-> Last reviewed: 2026-08-27
+> Last reviewed: 2026-08-31
 
-The bootstrap now includes folder watching, local archive/journal primitives, Platform device pairing,
-a journal-backed resumable upload queue, durable import-operation status projection, gentle local
-watched-item reminders, and an operational Diagnostics panel. The panel exposes typed permission, disk,
-journal, and queue facts and can preview then atomically save a redacted-by-construction support report.
+The product runtime now composes folder watching, immutable preservation, mixed-provider journal
+routing, Platform device pairing, authenticated operation-bound resumable upload, durable import polling,
+gentle local watched-item reminders, and an operational Diagnostics panel. The panel exposes typed
+permission, disk, journal, and queue facts and can preview then atomically save a redacted-by-construction support report.
 Terminal notices and reminders respect the existing macOS permission decision and never request
-permission themselves. The app now exposes manual release discovery and has sandbox bundle, signing,
-and notarization automation with exact policy tests. Owner credentials, a hosted notarized artifact,
-clean-machine acceptance, authenticated Platform/receiver integration, and background lifecycle wiring
-remain pending.
+permission themselves. The app exposes manual release discovery and has sandbox bundle, signing,
+notarization, immutable GitHub Release, and clean-machine acceptance automation with exact policy tests.
+Owner credentials, a hosted notarized artifact, a separate-Mac acceptance run, and live
+Platform/receiver integration remain pending external evidence.
 
 ## Intended toolchain
 
@@ -35,7 +35,9 @@ SwiftLint carries the size limits through the committed `.swiftlint.yml`; it ins
 
 `UploadQueue` holds the durable scheduler-to-uploader link: it streams one configured chunk at a time from the managed local archive, writes every receiver acknowledgement to the journal, resumes a recorded session by querying its status, and uses the SHA-256-derived journal identity on every open attempt. Retryable transport failures receive bounded backoff; permanent failures stop until an explicit retry. The queue admits upload slots and bytes before reading each chunk, and publishes only redacted state/progress for `UploadMenuStatusBinding`.
 
-The fixed blob-transfer fixture and in-process harness are local contract evidence, not live proof. The authenticated Platform edge and receiving-service run remains pending until those services expose their configured binding.
+The fixed blob-transfer fixture and in-process harness are local contract evidence, not live proof. The
+authenticated Platform transport is wired into the product runtime, while a receiving-service run remains
+pending until those services expose their configured binding.
 
 ## Backend import status and notices
 

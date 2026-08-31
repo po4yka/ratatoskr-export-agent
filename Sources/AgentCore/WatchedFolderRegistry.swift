@@ -23,6 +23,22 @@ public final class WatchedFolderRegistry {
     preferences.folders
   }
 
+  public func runtimeFolders() -> [(target: WatchedFolderTarget, policy: FolderArchivePolicy)] {
+    preferences.folders.compactMap { folder in
+      guard folder.isEnabled,
+            let resolved = try? bookmarkStore.resolvedFolder(from: folder.bookmarkData),
+            !resolved.isStale,
+            FileManager.default.isReadableFile(atPath: resolved.url.path) else {
+        return nil
+      }
+      _ = bookmarkStore.startAccessing(resolved)
+      return (
+        target: WatchedFolderTarget(id: folder.id, url: resolved.url, isEnabled: true),
+        policy: folder.archivePolicy
+      )
+    }
+  }
+
   /// Adds a picked folder, creating and persisting its bookmark entry.
   /// Adding a folder whose standardized path matches an existing entry
   /// returns that existing entry unchanged.

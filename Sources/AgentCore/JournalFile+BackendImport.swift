@@ -5,7 +5,7 @@ extension JournalFile {
     from previous: BackendImportObservation?, to next: BackendImportObservation?
   ) -> Bool {
     guard let next else { return false }
-    guard let previous else { return next.presentation == .processing && next.observedAt == .distantPast }
+    guard let previous else { return !next.terminalNoticeDelivered }
     guard previous.operationID == next.operationID else { return false }
     guard next.observedAt >= previous.observedAt else { return false }
     guard !previous.presentation.isTerminal || next.presentation == previous.presentation else {

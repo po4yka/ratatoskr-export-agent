@@ -38,10 +38,14 @@ gh workflow run distribution.yml \
   --repo po4yka/ratatoskr-export-agent \
   --ref main \
   -f short_version=1.0.0 \
-  -f build_version=1
+  -f build_version=1 \
+  -f source_revision=<full-40-character-commit-sha> \
+  -f release_tag=v1.0.0
 ```
 
-The job validates the secret set before materializing credentials, builds the release executable, runs unsigned distribution tests, imports the identity into an ephemeral Keychain, signs with hardened runtime and a secure timestamp, submits with `notarytool --wait`, staples the accepted ticket, validates with `stapler`, `codesign`, and Gatekeeper, then creates and uploads the final ZIP and SHA-256 file. Any failed stage prevents artifact upload.
+The build job validates the exact source and existing tag before materializing credentials, builds the release executable, runs unsigned distribution tests, imports the identity into an ephemeral Keychain, signs with hardened runtime and a secure timestamp, submits with `notarytool --wait`, staples the accepted ticket, and validates with `stapler`, `codesign`, and Gatekeeper. A separate final job has the only `contents: write` permission: it revalidates source and tag, refuses an existing release, verifies the downloaded ZIP checksum, and creates the immutable GitHub Release with ZIP and SHA-256 assets. Any failed stage prevents publication.
+
+After downloading those assets on a clean Mac, run `scripts/distribution/clean-machine-acceptance.sh <zip> <sha256-sidecar>` and follow its displayed product checklist. This is the required human boundary for first launch, folder authorization, Keychain relaunch, interrupted resume, terminal state, manual update, and rollback.
 
 Required release evidence is the workflow URL, source commit SHA, uploaded ZIP digest, notary submission ID, post-staple validation output, and Gatekeeper result. A successful workflow does not prove clean-machine folder bookmarks, Keychain pairing, or upload behavior; those remain a separate macOS acceptance run.
 

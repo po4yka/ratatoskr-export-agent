@@ -119,5 +119,5 @@ final_zip="$output/RatatoskrExportAgent-$short_version-notarized.zip"
   exit 1
 }
 ditto -c -k --keepParent "$app" "$final_zip"
-shasum -a 256 "$final_zip" > "$final_zip.sha256"
+(cd "$output" && shasum -a 256 "$(basename "$final_zip")" > "$(basename "$final_zip").sha256")
 printf 'notarized artifact: %s\nchecksum: %s\n' "$final_zip" "$final_zip.sha256"

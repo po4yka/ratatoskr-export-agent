@@ -1,7 +1,7 @@
 import Foundation
 
 /// Container format sniffed from leading magic bytes.
-public enum ArchiveContainer: Equatable, Sendable {
+public enum ArchiveContainer: String, Codable, Equatable, Sendable {
   /// ZIP local-file-header signature.
   case zip
 
@@ -14,7 +14,7 @@ public enum ArchiveContainer: Equatable, Sendable {
 
 /// Provider labels this agent can suggest from shallow evidence. Labels are
 /// advisory routing hints; backend services remain the parsing authority.
-public enum ArchiveProviderHint: Equatable, Sendable {
+public enum ArchiveProviderHint: String, Codable, Equatable, Sendable {
   case chatgpt
   case claude
   case instagram
@@ -23,7 +23,7 @@ public enum ArchiveProviderHint: Equatable, Sendable {
 }
 
 /// How strongly matched evidence supports the reported label.
-public enum ClassificationConfidence: Equatable, Sendable {
+public enum ClassificationConfidence: String, Codable, Equatable, Sendable {
   /// Every required marker of exactly one provider row was observed.
   case strong
 
@@ -37,7 +37,7 @@ public enum ClassificationConfidence: Equatable, Sendable {
 /// The shallow verdict for one candidate: container, advisory provider
 /// label, confidence, and the marker names behind it. Evidence carries
 /// marker names only, never archive content.
-public struct ArchiveClassification: Equatable, Sendable {
+public struct ArchiveClassification: Codable, Equatable, Sendable {
   public let container: ArchiveContainer
   public let provider: ArchiveProviderHint
   public let confidence: ClassificationConfidence?

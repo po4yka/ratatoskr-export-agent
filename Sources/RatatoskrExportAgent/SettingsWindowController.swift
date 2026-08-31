@@ -6,17 +6,26 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController: NSWindowController {
   private let viewModel: FolderSettingsViewModel
+  private let pairingViewModel: PairingOnboardingViewModel
 
-  init(registry: WatchedFolderRegistry) {
-    viewModel = FolderSettingsViewModel(registry: registry)
+  init(
+    registry: WatchedFolderRegistry,
+    session: DeviceSessionCoordinator,
+    onFoldersChanged: @escaping () -> Void = {}
+  ) {
+    viewModel = FolderSettingsViewModel(registry: registry, onChange: onFoldersChanged)
+    pairingViewModel = PairingOnboardingViewModel(session: session)
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 560, height: 320),
+      contentRect: NSRect(x: 0, y: 0, width: 620, height: 680),
       styleMask: [.titled, .closable],
       backing: .buffered,
       defer: false
     )
     window.title = "Ratatoskr Settings"
-    window.contentView = NSHostingView(rootView: FolderSettingsView(viewModel: viewModel))
+    window.contentView = NSHostingView(
+      rootView: SettingsRootView(
+        pairing: pairingViewModel, folders: viewModel
+      ))
     super.init(window: window)
   }
 
@@ -25,33 +34,9 @@ final class SettingsWindowController: NSWindowController {
     fatalError("SettingsWindowController is not created from coders")
   }
 
-  /// Builds the controller over the default preferences location.
-  /// Returns nil when the stored document cannot be loaded; callers must
-  /// surface that failure instead of retrying silently.
-  static func makeDefault() -> SettingsWindowController? {
-    guard
-      let registry = try? WatchedFolderRegistry(
-        preferencesStore: FileFolderPreferencesStore(fileURL: preferencesFileURL()),
-        bookmarkStore: SecurityScopedBookmarkStore()
-      )
-    else {
-      return nil
-    }
-    return SettingsWindowController(registry: registry)
-  }
-
   func showSettings() {
     NSApplication.shared.activate()
     showWindow(nil)
     window?.makeKeyAndOrderFront(nil)
-  }
-
-  private static func preferencesFileURL() -> URL {
-    let support =
-      FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-      .first ?? FileManager.default.temporaryDirectory
-    let directory = support.appendingPathComponent("Ratatoskr", isDirectory: true)
-    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    return directory.appendingPathComponent("folder-preferences.json")
   }
 }

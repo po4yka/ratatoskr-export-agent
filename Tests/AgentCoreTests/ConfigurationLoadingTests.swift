@@ -85,18 +85,14 @@ final class ConfigurationLoadingTests: XCTestCase {
     }
   }
 
-  func testPlainHttpLoopbackAccepted() throws {
+  func testPlainHttpLoopbackRejectedInPersistedConfiguration() throws {
     for host in ["localhost", "127.0.0.1", "::1"] {
       let endpoint = host == "::1" ? "http://[::1]:8443" : "http://\(host):8443"
       let json =
         "{\"schemaVersion\": 1, \"maxArchiveBytes\": 1000, \"maxConcurrentUploads\": 1, \"backendBaseURL\": \"\(endpoint)\"}"
       let url = try writeTemporaryConfiguration(json)
 
-      let configuration = try AgentConfiguration.load(from: url)
-
-      XCTAssertEqual(
-        configuration.backendBaseURL, URL(string: endpoint), "expected \(endpoint) to be accepted"
-      )
+      XCTAssertThrowsError(try AgentConfiguration.load(from: url))
     }
   }
 

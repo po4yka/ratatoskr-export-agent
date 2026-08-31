@@ -45,12 +45,32 @@ public struct UploadCheckpoint: Codable, Equatable, Sendable {
   }
 }
 
+/// Immutable routing evidence captured before an archive enters the durable queue.
+public struct ArchiveRouting: Codable, Equatable, Sendable {
+  public let provider: PlatformArchiveProvider
+  public let classification: ArchiveClassification
+  public let archivePolicy: FolderArchivePolicy
+
+  public init(
+    provider: PlatformArchiveProvider,
+    classification: ArchiveClassification,
+    archivePolicy: FolderArchivePolicy
+  ) {
+    self.provider = provider
+    self.classification = classification
+    self.archivePolicy = archivePolicy
+  }
+}
+
 /// One live entry reconstructed from the local write-ahead journal.
 public struct JournalEntry: Codable, Equatable, Sendable {
   public let id: UUID
   public let fingerprint: ArchiveFingerprint
   public let idempotencyKey: String
+  public let routing: ArchiveRouting
   public let state: JournalState
+  /// The prepared Platform operation. Transfer may still be incomplete.
+  public let operationID: UUID?
   public let uploadCheckpoint: UploadCheckpoint?
   /// The last verified Platform operation fact. It contains no backend diagnostic or archive content.
   public let backendImport: BackendImportObservation?
@@ -61,7 +81,9 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     id: UUID,
     fingerprint: ArchiveFingerprint,
     idempotencyKey: String,
+    routing: ArchiveRouting,
     state: JournalState,
+    operationID: UUID? = nil,
     uploadCheckpoint: UploadCheckpoint? = nil,
     backendImport: BackendImportObservation? = nil,
     managedArchivePath: String? = nil
@@ -69,7 +91,9 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     self.id = id
     self.fingerprint = fingerprint
     self.idempotencyKey = idempotencyKey
+    self.routing = routing
     self.state = state
+    self.operationID = operationID
     self.uploadCheckpoint = uploadCheckpoint
     self.backendImport = backendImport
     self.managedArchivePath = managedArchivePath
@@ -121,6 +145,7 @@ enum JournalIdentity {
 
   static func matches(_ entry: JournalEntry) -> Bool {
     isValid(entry.fingerprint) && entry.idempotencyKey == idempotencyKey(for: entry.fingerprint) &&
+      entry.routing.classification.provider.rawValue == entry.routing.provider.rawValue &&
       (entry.uploadCheckpoint == nil || (entry.uploadCheckpoint!.chunkSizeBytes > 0 && entry.uploadCheckpoint!.attemptCount >= 0))
   }
 }

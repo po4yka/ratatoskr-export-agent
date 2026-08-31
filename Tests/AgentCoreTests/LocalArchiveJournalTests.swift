@@ -6,7 +6,7 @@ final class LocalArchiveJournalTests: XCTestCase {
   func testEveryTransitionIsPersistedBeforeReturning() throws {
     let url = journalURL()
     let journal = try makeJournal(at: url)
-    var entry = try journal.discover(fingerprint: fixtureFingerprint())
+    var entry = try journal.discover(fingerprint: fixtureFingerprint(), routing: fixtureRouting())
     XCTAssertEqual(entry.state, .discovered)
     let states: [JournalState] = [.archived, .hashed, .queued, .uploading, .uploaded, .confirmed]
     for state in states {
@@ -18,16 +18,16 @@ final class LocalArchiveJournalTests: XCTestCase {
   }
 
   func testIdempotencyKeyIsStableForTheSameDigest() throws {
-    let first = try makeJournal(at: journalURL()).discover(fingerprint: fixtureFingerprint())
-    let second = try makeJournal(at: journalURL()).discover(fingerprint: fixtureFingerprint())
+    let first = try makeJournal(at: journalURL()).discover(fingerprint: fixtureFingerprint(), routing: fixtureRouting())
+    let second = try makeJournal(at: journalURL()).discover(fingerprint: fixtureFingerprint(), routing: fixtureRouting())
     XCTAssertEqual(first.idempotencyKey, second.idempotencyKey)
     XCTAssertTrue(first.idempotencyKey.hasSuffix(fixtureFingerprint().sha256Hex))
   }
 
   func testDuplicateDigestCannotCreateSecondEntry() throws {
     let journal = try makeJournal(at: journalURL())
-    _ = try journal.discover(fingerprint: fixtureFingerprint())
-    XCTAssertThrowsError(try journal.discover(fingerprint: fixtureFingerprint()))
+    _ = try journal.discover(fingerprint: fixtureFingerprint(), routing: fixtureRouting())
+    XCTAssertThrowsError(try journal.discover(fingerprint: fixtureFingerprint(), routing: fixtureRouting()))
   }
 
   private func makeJournal(at url: URL) throws -> LocalArchiveJournal {

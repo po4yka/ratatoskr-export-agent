@@ -9,7 +9,7 @@ public actor InboxWatchCoordinator {
     @Sendable (WatchedFolderTarget) throws ->
     any InboxFolderMonitoring
 
-  let targets: [WatchedFolderTarget]
+  var targets: [WatchedFolderTarget]
   let makeMonitor: MonitorFactory
   private let debounceScheduler: any WatchScheduling
   private let tickScheduler: any WatchScheduling
@@ -28,10 +28,11 @@ public actor InboxWatchCoordinator {
   var pendingPaths: Set<String> = []
   var candidateFolders: [String: UUID] = [:]
   var completedCandidates: [String: StableArchiveCandidate] = [:]
+  var processingTasks: [String: Task<Void, Never>] = [:]
   var reassessmentScheduled = false
   var isWatching = false
   var debouncer: Debouncer?
-  let onCandidate: @Sendable (StableArchiveCandidate) -> Void
+  let onCandidate: @Sendable (StableArchiveCandidate) async -> Bool
 
   /// Diagnostic hook invoked after every scan pass completes; used by
   /// health surfaces (and tests) to observe pass boundaries deterministically.
@@ -43,7 +44,7 @@ public actor InboxWatchCoordinator {
     tickScheduler: any WatchScheduling,
     configuration: CoordinatorConfiguration,
     clock: @escaping @Sendable () -> Date,
-    onCandidate: @escaping @Sendable (StableArchiveCandidate) -> Void,
+    onCandidate: @escaping @Sendable (StableArchiveCandidate) async -> Bool,
     onScanPassFinished: @escaping @Sendable () -> Void = {}
   ) {
     self.targets = targets
@@ -82,11 +83,15 @@ public actor InboxWatchCoordinator {
   }
 
   /// Ends all observation; safe to call repeatedly.
-  public func stop() {
+  public func stop() async {
     guard isWatching else {
       return
     }
     isWatching = false
+    let tasks = Array(processingTasks.values)
+    tasks.forEach { $0.cancel() }
+    for task in tasks { await task.value }
+    processingTasks.removeAll()
     for monitor in monitors.values {
       monitor.stop()
     }
@@ -124,8 +129,9 @@ public actor InboxWatchCoordinator {
     runScanPass()
   }
 
-  private func scheduleNextReassessmentIfNecessary() {
-    guard !pendingPaths.isEmpty, isWatching, !reassessmentScheduled else {
+  func scheduleNextReassessmentIfNecessary() {
+    let hasIdleCandidate = pendingPaths.contains { processingTasks[$0] == nil }
+    guard hasIdleCandidate, isWatching, !reassessmentScheduled else {
       return
     }
     reassessmentScheduled = true

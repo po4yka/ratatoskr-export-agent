@@ -4,6 +4,7 @@ import AppKit
 @main
 struct RatatoskrExportAgentApp {
   private static var activeSmokeCoordinator: SmokeLaunchCoordinator?
+  private static var activeProductCoordinator: ProductApplicationCoordinator?
 
   static func main() {
     let arguments = Array(CommandLine.arguments.dropFirst())
@@ -18,6 +19,10 @@ struct RatatoskrExportAgentApp {
     if arguments.contains("--smoke") {
       let coordinator = SmokeLaunchCoordinator()
       activeSmokeCoordinator = coordinator
+      app.delegate = coordinator
+    } else {
+      let coordinator = ProductApplicationCoordinator()
+      activeProductCoordinator = coordinator
       app.delegate = coordinator
     }
 

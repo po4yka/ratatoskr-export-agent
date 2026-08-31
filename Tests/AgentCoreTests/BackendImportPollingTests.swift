@@ -62,7 +62,7 @@ final class BackendImportPollingTests: XCTestCase {
 
   private func makeUploadedEntry(in journal: LocalArchiveJournal) throws -> JournalEntry {
     let fingerprint = ArchiveFingerprint(sha256Hex: String(repeating: "a", count: 64), byteSize: 1)
-    let discovered = try journal.discover(fingerprint: fingerprint)
+    let discovered = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting())
     let archived = try journal.advance(entryID: discovered.id, to: .archived)
     let hashed = try journal.advance(entryID: archived.id, to: .hashed)
     let queued = try journal.advance(entryID: hashed.id, to: .queued)

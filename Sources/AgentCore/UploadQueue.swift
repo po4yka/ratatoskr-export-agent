@@ -6,7 +6,6 @@ public actor UploadQueue {
   let journal: LocalArchiveJournal
   let blobTransport: (any BlobReceiptTransport)?
   let operationTransport: (any PlatformArchiveOperationTransport)?
-  let operationProvider: PlatformArchiveProvider?
   let retryPolicy: UploadRetryPolicy
   let limiter: UploadAdmissionLimiter
   let chunkSize: Int
@@ -22,7 +21,6 @@ public actor UploadQueue {
     self.journal = journal
     blobTransport = transport
     operationTransport = nil
-    operationProvider = nil
     self.retryPolicy = retryPolicy
     self.limiter = limiter
     self.chunkSize = chunkSize
@@ -38,7 +36,6 @@ public actor UploadQueue {
     self.journal = journal
     blobTransport = transport
     operationTransport = nil
-    operationProvider = nil
     self.retryPolicy = retryPolicy
     limiter = UploadAdmissionLimiter(
       maximumActive: configuration.maxConcurrentUploads,
@@ -52,7 +49,6 @@ public actor UploadQueue {
   /// the generic blob receipt path.
   public init(
     journal: LocalArchiveJournal,
-    provider: PlatformArchiveProvider,
     operationTransport: any PlatformArchiveOperationTransport,
     configuration: AgentConfiguration,
     retryPolicy: UploadRetryPolicy = UploadRetryPolicy()
@@ -60,7 +56,6 @@ public actor UploadQueue {
     self.journal = journal
     blobTransport = nil
     self.operationTransport = operationTransport
-    operationProvider = provider
     self.retryPolicy = retryPolicy
     limiter = UploadAdmissionLimiter(
       maximumActive: configuration.maxConcurrentUploads,

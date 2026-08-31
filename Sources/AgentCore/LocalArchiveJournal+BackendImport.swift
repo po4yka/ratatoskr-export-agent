@@ -4,22 +4,22 @@ public extension LocalArchiveJournal {
   /// Durably binds an already accepted Platform operation to an archive entry.
   @discardableResult
   func bindBackendOperation(entryID: UUID, operationID: UUID) throws -> JournalEntry {
+    lock.lock()
+    defer { lock.unlock() }
     guard let previous = projection[entryID] else { throw LocalJournalError.missingEntry }
     guard previous.state != .discovered else {
       throw LocalJournalError.invalidTransition(from: previous.state, nextState: previous.state)
     }
-    if let observed = previous.backendImport, observed.operationID != operationID {
+    if let existing = previous.operationID, existing != operationID {
       throw LocalJournalError.invalidTransition(from: previous.state, nextState: previous.state)
     }
     let entry = JournalEntry(
       id: previous.id, fingerprint: previous.fingerprint, idempotencyKey: previous.idempotencyKey,
-      state: previous.state, uploadCheckpoint: previous.uploadCheckpoint,
-      backendImport: previous.backendImport ?? BackendImportObservation(
-        operationID: operationID, presentation: .processing, observedAt: .distantPast
-      ),
+      routing: previous.routing, state: previous.state, operationID: operationID,
+      uploadCheckpoint: previous.uploadCheckpoint, backendImport: previous.backendImport,
       managedArchivePath: previous.managedArchivePath
     )
-    try persist(.backendObservation(entry))
+    try persist(.operationBinding(entry))
     projection[entry.id] = entry
     try compactIfNeeded()
     return entry
@@ -34,12 +34,15 @@ public extension LocalArchiveJournal {
     observedAt: Date,
     backendUpdatedAt: Date? = nil
   ) throws -> JournalEntry {
+    lock.lock()
+    defer { lock.unlock() }
     guard let previous = projection[entryID] else { throw LocalJournalError.missingEntry }
-    guard previous.backendImport?.operationID == operationID else { throw LocalJournalError.missingEntry }
+    guard previous.operationID == operationID else { throw LocalJournalError.missingEntry }
     let delivered = previous.backendImport?.terminalNoticeDelivered ?? false
     let entry = JournalEntry(
       id: previous.id, fingerprint: previous.fingerprint, idempotencyKey: previous.idempotencyKey,
-      state: previous.state, uploadCheckpoint: previous.uploadCheckpoint,
+      routing: previous.routing, state: previous.state, operationID: previous.operationID,
+      uploadCheckpoint: previous.uploadCheckpoint,
       backendImport: BackendImportObservation(
         operationID: operationID, presentation: presentation, observedAt: observedAt,
         backendUpdatedAt: backendUpdatedAt,
@@ -56,12 +59,15 @@ public extension LocalArchiveJournal {
   /// Records delivery only after the operating system accepted a generic terminal notice.
   @discardableResult
   func markBackendTerminalNoticeDelivered(entryID: UUID, operationID: UUID) throws -> JournalEntry {
+    lock.lock()
+    defer { lock.unlock() }
     guard let previous = projection[entryID], let observation = previous.backendImport,
           observation.operationID == operationID, observation.presentation.isTerminal
     else { throw LocalJournalError.missingEntry }
     let entry = JournalEntry(
       id: previous.id, fingerprint: previous.fingerprint, idempotencyKey: previous.idempotencyKey,
-      state: previous.state, uploadCheckpoint: previous.uploadCheckpoint,
+      routing: previous.routing, state: previous.state, operationID: previous.operationID,
+      uploadCheckpoint: previous.uploadCheckpoint,
       backendImport: BackendImportObservation(
         operationID: observation.operationID, presentation: observation.presentation,
         observedAt: observation.observedAt, backendUpdatedAt: observation.backendUpdatedAt,

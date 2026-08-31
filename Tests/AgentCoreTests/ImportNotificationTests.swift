@@ -55,7 +55,7 @@ final class ImportNotificationTests: XCTestCase {
       .appendingPathComponent(UUID().uuidString).appendingPathComponent("journal.ndjson")
     let journal = try LocalArchiveJournal.open(at: url)
     let fingerprint = ArchiveFingerprint(sha256Hex: String(repeating: "b", count: 64), byteSize: 1)
-    let discovered = try journal.discover(fingerprint: fingerprint)
+    let discovered = try journal.discover(fingerprint: fingerprint, routing: fixtureRouting())
     let archived = try journal.advance(entryID: discovered.id, to: .archived)
     let operationID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     _ = try journal.bindBackendOperation(entryID: archived.id, operationID: operationID)

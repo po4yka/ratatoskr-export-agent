@@ -45,6 +45,21 @@ final class WatchScenario: @unchecked Sendable {
     targets: [WatchedFolderTarget],
     onScanPass: @escaping @Sendable () -> Void = {}
   ) -> InboxWatchCoordinator {
+    makeCoordinator(
+      targets: targets,
+      candidateHandler: { [sink] in
+        sink.append($0)
+        return true
+      },
+      onScanPass: onScanPass
+    )
+  }
+
+  func makeCoordinator(
+    targets: [WatchedFolderTarget],
+    candidateHandler: @escaping @Sendable (StableArchiveCandidate) async -> Bool,
+    onScanPass: @escaping @Sendable () -> Void = {}
+  ) -> InboxWatchCoordinator {
     InboxWatchCoordinator(
       targets: targets,
       monitorFactory: { [weak self] target in
@@ -64,9 +79,7 @@ final class WatchScenario: @unchecked Sendable {
       clock: { [clock] in
         clock.date()
       },
-      onCandidate: { [sink] in
-        sink.append($0)
-      },
+      onCandidate: candidateHandler,
       onScanPassFinished: onScanPass
     )
   }

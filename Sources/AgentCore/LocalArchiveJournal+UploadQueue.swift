@@ -4,6 +4,8 @@ public extension LocalArchiveJournal {
   /// Returns interrupted work to the durable queue without changing identity.
   @discardableResult
   func deferRetry(entryID: UUID, upload: UploadCheckpoint?) throws -> JournalEntry {
+    lock.lock()
+    defer { lock.unlock() }
     guard let previous = projection[entryID] else { throw LocalJournalError.missingEntry }
     guard previous.state == .uploading else {
       throw LocalJournalError.invalidTransition(from: previous.state, nextState: .queued)
@@ -12,7 +14,9 @@ public extension LocalArchiveJournal {
       id: previous.id,
       fingerprint: previous.fingerprint,
       idempotencyKey: previous.idempotencyKey,
+      routing: previous.routing,
       state: .queued,
+      operationID: previous.operationID,
       uploadCheckpoint: upload,
       backendImport: previous.backendImport,
       managedArchivePath: previous.managedArchivePath
@@ -30,6 +34,8 @@ public extension LocalArchiveJournal {
     control: UploadCheckpoint.Control,
     now: Date = Date()
   ) throws -> JournalEntry {
+    lock.lock()
+    defer { lock.unlock() }
     guard let previous = projection[entryID], previous.state == .queued,
           let checkpoint = previous.uploadCheckpoint else { throw LocalJournalError.missingEntry }
     let retryAt = control == .active ? now : checkpoint.nextRetryAt
