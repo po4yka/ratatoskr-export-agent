@@ -45,9 +45,13 @@ test_distribution_workflow_is_fail_closed() {
   require_pattern '^      source_revision:' "$workflow" || return 1
   require_pattern '^      release_tag:' "$workflow" || return 1
   require_pattern 'ref:.*inputs\.source_revision' "$workflow" || return 1
-  require_pattern 'git rev-parse.*inputs\.source_revision' "$workflow" || return 1
-  require_pattern 'git rev-parse.*release_tag' "$workflow" || return 1
-  require_pattern 'git cat-file -t.*release_tag' "$workflow" || return 1
+  require_pattern 'git rev-parse.*RELEASE_SOURCE_REVISION' "$workflow" || return 1
+  require_pattern 'git rev-parse.*RELEASE_TAG' "$workflow" || return 1
+  require_pattern 'git cat-file -t.*RELEASE_TAG' "$workflow" || return 1
+  if grep -Eq 'git (rev-parse|cat-file).*\$\{\{ inputs\.' "$workflow"; then
+    echo "workflow inputs must reach shell commands through environment variables" >&2
+    return 1
+  fi
   require_pattern '^  release:' "$workflow" || return 1
   require_pattern 'contents: write' "$workflow" || return 1
   require_pattern 'actions/download-artifact@[0-9a-f]{40}' "$workflow" || return 1

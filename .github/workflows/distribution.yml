@@ -54,9 +54,9 @@ jobs:
           set -euo pipefail
           [[ "$RELEASE_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
           [ "$RELEASE_TAG" = "v$RELEASE_SHORT_VERSION" ]
-          [ "$(git rev-parse HEAD)" = "$(git rev-parse '${{ inputs.source_revision }}^{commit}')" ]
-          [ "$(git cat-file -t '${{ inputs.release_tag }}')" = "tag" ]
-          [ "$(git rev-parse '${{ inputs.release_tag }}^{commit}')" = "$(git rev-parse HEAD)" ]
+          [ "$(git rev-parse HEAD)" = "$(git rev-parse "${RELEASE_SOURCE_REVISION}^{commit}")" ]
+          [ "$(git cat-file -t "$RELEASE_TAG")" = "tag" ]
+          [ "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse HEAD)" ]
       - name: Validate owner authorization
         run: scripts/distribution/validate-owner-secrets.sh
       - name: Build release executable
@@ -85,6 +85,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 10
     permissions:
+      # The final job alone creates the immutable GitHub Release and uploads its accepted assets.
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
@@ -100,9 +101,9 @@ jobs:
       - name: Revalidate source, tag, and absent release
         run: |
           set -euo pipefail
-          [ "$(git rev-parse HEAD)" = "$(git rev-parse '${{ inputs.source_revision }}^{commit}')" ]
-          [ "$(git cat-file -t '${{ inputs.release_tag }}')" = "tag" ]
-          [ "$(git rev-parse '${{ inputs.release_tag }}^{commit}')" = "$(git rev-parse HEAD)" ]
+          [ "$(git rev-parse HEAD)" = "$(git rev-parse "${RELEASE_SOURCE_REVISION}^{commit}")" ]
+          [ "$(git cat-file -t "$RELEASE_TAG")" = "tag" ]
+          [ "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse HEAD)" ]
           response=$(gh api --include "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>&1) && {
             echo "release already exists: $RELEASE_TAG" >&2
             exit 1
