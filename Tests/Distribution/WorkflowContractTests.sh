@@ -53,7 +53,7 @@ test_distribution_workflow_is_fail_closed() {
     return 1
   fi
   require_pattern '^  release:' "$workflow" || return 1
-  require_pattern 'contents: write' "$workflow" || return 1
+  require_pattern 'contents: write[[:space:]]+#' "$workflow" || return 1
   require_pattern 'actions/download-artifact@[0-9a-f]{40}' "$workflow" || return 1
   require_pattern 'shasum -a 256 -c' "$workflow" || return 1
   require_pattern 'gh api.*releases/tags' "$workflow" || return 1

@@ -84,9 +84,8 @@ jobs:
     needs: notarized-app
     runs-on: macos-15
     timeout-minutes: 10
-    # The final job alone creates the immutable GitHub Release and uploads its accepted assets.
     permissions:
-      contents: write
+      contents: write # to create the immutable GitHub Release and upload its accepted assets
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_SHORT_VERSION: ${{ inputs.short_version }}
