@@ -8,6 +8,10 @@
 # lands here arrives with its own gate (`ci.yml`) and its own lockfile policy, and that commit is the
 # right place to decide whether a monthly dependency pull request is signal or noise — not this file,
 # written before there is anything to update.
+#
+# Security fixes need no entry here: Dependabot security updates are enabled in the repository
+# settings, so an advisory against a locked dependency opens its own pull request whatever this file
+# lists.
 version: 2
 updates:
   - package-ecosystem: github-actions
