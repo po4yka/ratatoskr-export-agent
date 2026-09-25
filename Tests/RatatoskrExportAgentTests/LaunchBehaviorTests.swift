@@ -36,8 +36,8 @@ final class LaunchBehaviorTests: XCTestCase {
       "smoke launch must still be running shortly after start instead of exiting immediately"
     )
 
-    let deadline = Date().addingTimeInterval(15)
-    while smokeProcess.isRunning, Date() < deadline {
+    let deadline = Date().addingTimeInterval(15)  // wall-clock: bounded poll for subprocess exit, not a calendar assertion
+    while smokeProcess.isRunning, Date() < deadline {  // wall-clock: bounded poll for subprocess exit, not a calendar assertion
       Thread.sleep(forTimeInterval: 0.05)
     }
 
@@ -56,8 +56,8 @@ final class LaunchBehaviorTests: XCTestCase {
 
     try unknownFlagProcess.run()
 
-    let deadline = Date().addingTimeInterval(10)
-    while unknownFlagProcess.isRunning, Date() < deadline {
+    let deadline = Date().addingTimeInterval(10)  // wall-clock: bounded poll for subprocess exit, not a calendar assertion
+    while unknownFlagProcess.isRunning, Date() < deadline {  // wall-clock: bounded poll for subprocess exit, not a calendar assertion
       Thread.sleep(forTimeInterval: 0.05)
     }
 
