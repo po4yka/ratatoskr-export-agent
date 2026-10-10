@@ -163,6 +163,8 @@ A planned flow:
 
 The agent never writes directly to ChatGPT/Claude database schemas or BlobStore paths.
 
+The default `maxArchiveBytes` is 2 GiB, equal to Platform's default archive ceiling (`archive_staging.max_archive_bytes`). When Platform answers a prepare or chunk request with HTTP 413 (`payload_too_large`), the failure is permanent: the entry stops automatic retry, keeps its preserved archive, and shows as an upload that needs attention until the user retries it. Lower `maxArchiveBytes` or raise the Platform ceiling so the two agree.
+
 ## Duplicate handling
 
 The archive hash is the primary duplicate identity. Before upload, the agent asks Ratatoskr whether the content hash is already present.

@@ -10,7 +10,8 @@ public struct AgentConfiguration: Equatable, Sendable {
   /// Base URL of the Ratatoskr Platform API. Nil while unconfigured.
   public var backendBaseURL: URL?
 
-  /// Largest archive accepted for upload, in bytes.
+  /// Largest archive accepted for upload, in bytes. The 2 GiB default equals Platform's default
+  /// archive ceiling; a Platform that still answers 413 stops automatic retry for that archive.
   public var maxArchiveBytes: Int
 
   /// Maximum number of simultaneous uploads.

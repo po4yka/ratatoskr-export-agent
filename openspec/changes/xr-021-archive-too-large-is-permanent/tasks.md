@@ -5,8 +5,8 @@
 
 ## 2. Documentation of the size ceiling
 
-- [ ] 2.1 State in the `maxArchiveBytes` doc comment of `AgentConfiguration.swift` and in `README.md` that the 2 GiB default equals Platform's default archive ceiling and that a 413 stops automatic retry. This is documentation and cannot start from a failing test.
+- [x] 2.1 State in the `maxArchiveBytes` doc comment of `AgentConfiguration.swift` and in `README.md` that the 2 GiB default equals Platform's default archive ceiling and that a 413 stops automatic retry. This is documentation and cannot start from a failing test.
 
 ## 3. Gate
 
-- [ ] 3.1 Run `swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, and `openspec validate --all --strict`; all pass. A gate run is not a behaviour and cannot start from a failing test.
+- [x] 3.1 Run `swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, and `openspec validate --all --strict`; all pass. A gate run is not a behaviour and cannot start from a failing test.
