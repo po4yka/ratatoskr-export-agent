@@ -138,6 +138,10 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
 
 extension HTTPURLResponse {
   fileprivate var transportError: PlatformDeviceTransportError {
-    statusCode == 401 ? .refused : .unavailable
+    switch statusCode {
+    case 401: .refused
+    case 413: .payloadTooLarge
+    default: .unavailable
+    }
   }
 }
