@@ -14,4 +14,4 @@
 
 ## 4. Gate
 
-- [ ] 4.1 Run `swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, and `openspec validate --all --strict`; all pass. A gate run is not a behaviour and cannot start from a failing test.
+- [x] 4.1 Run `swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, and `openspec validate --all --strict`; all pass. A gate run is not a behaviour and cannot start from a failing test.
