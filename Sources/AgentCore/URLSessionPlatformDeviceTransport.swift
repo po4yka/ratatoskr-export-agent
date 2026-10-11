@@ -6,6 +6,7 @@ public enum PlatformDeviceTransportError: Error, CustomStringConvertible, Sendab
   case invalidResponse
   case unavailable
   case payloadTooLarge
+  case refusedPermanently
 
   public var description: String {
     switch self {
@@ -19,6 +20,8 @@ public enum PlatformDeviceTransportError: Error, CustomStringConvertible, Sendab
       "Platform is unavailable."
     case .payloadTooLarge:
       "Platform refused the archive because it exceeds the size limit."
+    case .refusedPermanently:
+      "Platform refused the archive request permanently."
     }
   }
 }

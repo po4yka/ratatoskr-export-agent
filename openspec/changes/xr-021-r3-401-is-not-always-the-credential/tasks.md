@@ -5,8 +5,8 @@
 
 ## 2. A 403 on the archive routes is permanent
 
-- [ ] 2.1 Add `Tests/AgentCoreTests/PlatformArchiveRefusedTests.swift::testFinalizeForbiddenStopsAutomaticRetry` and `::testPrepareForbiddenStopsAutomaticRetry` using the `ResumableURLProtocol` harness with a 403 `chatgpt.account.unmapped` envelope; assert `control == .failed`, `nextRetryAt == nil`, the menu title "1 upload need attention", and no request on a later run. Run them and confirm they fail because 403 is mapped to `unavailable` and the queue schedules a retry.
-- [ ] 2.2 Add `PlatformDeviceTransportError.refusedPermanently` and map 403 to it in `HTTPURLResponse.transportError`; rerun and confirm both pass with no queue change.
+- [x] 2.1 Add `Tests/AgentCoreTests/PlatformArchiveRefusedTests.swift::testFinalizeForbiddenStopsAutomaticRetry` and `::testPrepareForbiddenStopsAutomaticRetry` using the `ResumableURLProtocol` harness with a 403 `chatgpt.account.unmapped` envelope; assert `control == .failed`, `nextRetryAt == nil`, the menu title "1 upload need attention", and no request on a later run. Run them and confirm they fail because 403 is mapped to `unavailable` and the queue schedules a retry.
+- [x] 2.2 Add `PlatformDeviceTransportError.refusedPermanently` and map 403 to it in `HTTPURLResponse.transportError`; rerun and confirm both pass with no queue change.
 
 ## 3. Documentation
 

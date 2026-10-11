@@ -140,6 +140,7 @@ extension HTTPURLResponse {
   fileprivate func transportError(body: Data) -> PlatformDeviceTransportError {
     switch statusCode {
     case 401: PlatformAuthVerdict.transportError(forUnauthorizedBody: body)
+    case 403: .refusedPermanently
     case 413: .payloadTooLarge
     default: .unavailable
     }
