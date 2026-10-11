@@ -18,7 +18,7 @@ struct AuthenticatedPlatformHTTPClient: Sendable {
       afterRejectedCredential: firstCredential
     )
     let second = try await send(unsignedRequest, credential: recovered)
-    if second.1.statusCode == 401 {
+    if second.1.statusCode == 401, PlatformAuthVerdict.isPlatformUnauthenticated(second.0) {
       await authorizer.authorizationWasRejected(recovered)
     }
     return second

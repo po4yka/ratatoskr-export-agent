@@ -81,7 +81,8 @@ public struct URLSessionBackendOperationPoller: BackendOperationPolling {
     request.httpMethod = "GET"
     let (data, http) = try await client.perform(request)
     guard http.statusCode == 200 else {
-      throw http.statusCode == 401 ? PlatformDeviceTransportError.refused : PlatformDeviceTransportError.unavailable
+      throw http.statusCode == 401
+        ? PlatformAuthVerdict.transportError(forUnauthorizedBody: data) : PlatformDeviceTransportError.unavailable
     }
     return data
   }

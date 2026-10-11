@@ -68,7 +68,7 @@ public struct URLSessionPlatformDeviceTransport: PlatformDeviceTransport {
     }
     guard httpResponse.statusCode == 201 else {
       throw httpResponse.statusCode == 401
-        ? PlatformDeviceTransportError.refused : PlatformDeviceTransportError.unavailable
+        ? PlatformAuthVerdict.transportError(forUnauthorizedBody: data) : PlatformDeviceTransportError.unavailable
     }
     return try Self.decodePairing(data, origin: request.origin)
   }
@@ -96,7 +96,7 @@ public struct URLSessionPlatformDeviceTransport: PlatformDeviceTransport {
     }
     guard httpResponse.statusCode == statusCode else {
       throw httpResponse.statusCode == 401
-        ? PlatformDeviceTransportError.refused : PlatformDeviceTransportError.unavailable
+        ? PlatformAuthVerdict.transportError(forUnauthorizedBody: data) : PlatformDeviceTransportError.unavailable
     }
     return data
   }

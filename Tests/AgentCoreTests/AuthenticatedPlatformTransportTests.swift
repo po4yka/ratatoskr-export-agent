@@ -123,7 +123,7 @@ private final class AuthorizationRecorder: @unchecked Sendable {
       return rejectEveryCredential
         || (values.count == 1 && authorization == "Bearer \(rejectFirstCredential ?? "")")
     }
-    if shouldReject { return (401, Data()) }
+    if shouldReject { return (401, Data(#"{"code":"platform.auth.unauthenticated"}"#.utf8)) }
     let path = request.url?.path ?? ""
     if path == "/v1/ai-archives/chatgpt" {
       return (202, Data(#"{"operation_id":"00000000-0000-0000-0000-000000000231","status":"accepted"}"#.utf8))
