@@ -165,6 +165,12 @@ The agent never writes directly to ChatGPT/Claude database schemas or BlobStore 
 
 The default `maxArchiveBytes` is 2 GiB, equal to Platform's default archive ceiling (`archive_staging.max_archive_bytes`). When Platform answers a prepare or chunk request with HTTP 413 (`payload_too_large`), the failure is permanent: the entry stops automatic retry, keeps its preserved archive, and shows as an upload that needs attention until the user retries it. Lower `maxArchiveBytes` or raise the Platform ceiling so the two agree.
 
+### Which responses cost the pairing and which stop an upload
+
+Only Platform's own authentication verdict costs the device pairing: a `401` whose body is an error envelope with code `platform.auth.unauthenticated`. The agent refreshes the credential once and resends; if the answer is again that `401`, it removes the stored credential and asks the user to pair again. Any other `401` (another envelope code such as `claude.auth.unauthenticated` relayed from a receiver, an empty body, or a body that is not an error envelope) is not a verdict on the device credential: after the same single refresh it is treated as unavailable, retried with backoff, and never removes the pairing.
+
+Two responses stop an upload without touching the pairing: `413` (`payload_too_large`) and `403` (for example `chatgpt.account.unmapped`, a Platform user the receiver has not set up). Both are permanent: the entry stops automatic retry, keeps its preserved archive, and shows as an upload that needs attention until the user retries it.
+
 ## Duplicate handling
 
 The archive hash is the primary duplicate identity. Before upload, the agent asks Ratatoskr whether the content hash is already present.

@@ -10,7 +10,7 @@
 
 ## 3. Documentation
 
-- [ ] 3.1 State in `README.md` which responses cost the pairing (only Platform's own `401`) and which stop an upload (`413`, `403`). Documentation cannot start from a failing test.
+- [x] 3.1 State in `README.md` which responses cost the pairing (only Platform's own `401`) and which stop an upload (`413`, `403`). Documentation cannot start from a failing test.
 
 ## 4. Gate
 

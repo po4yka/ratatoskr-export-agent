@@ -8,6 +8,8 @@ User-selected inbox/archive URLs, security-scoped bookmarks, file coordination/e
 
 Device pairing/refresh/revoke, upload create/resume/complete, operation status, completeness summary, and retry classification. Every upload uses archive hash/idempotency.
 
+Retry classification: only a `401` carrying Platform's `platform.auth.unauthenticated` envelope costs the device pairing; any other `401` is unavailable and retried. `413` and `403` are permanent upload failures that need attention. See the README section "Which responses cost the pairing and which stop an upload".
+
 ## OS
 
 Keychain, notifications, background task/lifecycle, sleep/wake, app launch, optional helper/LaunchAgent only after an ADR.
