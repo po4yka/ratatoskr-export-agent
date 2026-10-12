@@ -15,7 +15,7 @@
 
 ## 4. Documentation
 
-- [ ] 4.1 State the table, the reopen rule and the bounds in `README.md` and `docs/ARCHITECTURE.md`, and replace the nonexistent `imports`, `upload-session` and `complete-upload` paths in section 22 with the real Platform routes. Documentation cannot start from a failing test.
+- [x] 4.1 State the table, the reopen rule and the bounds in `README.md` and `docs/ARCHITECTURE.md`, and replace the nonexistent `imports`, `upload-session` and `complete-upload` paths in section 22 with the real Platform routes. Documentation cannot start from a failing test.
 
 ## 5. Gate
 

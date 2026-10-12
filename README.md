@@ -171,6 +171,26 @@ Only Platform's own authentication verdict costs the device pairing: a `401` who
 
 Two responses stop an upload without touching the pairing: `413` (`payload_too_large`) and `403` (for example `chatgpt.account.unmapped`, a Platform user the receiver has not set up). Both are permanent: the entry stops automatic retry, keeps its preserved archive, and shows as an upload that needs attention until the user retries it.
 
+### How Platform answers are classified and when retries end
+
+The agent classifies every failed answer by route (XR-021 CONTRACTS.md section R5-05):
+
+| Route | Answer | The agent |
+| --- | --- | --- |
+| any | `401` with `platform.auth.unauthenticated`, `403`, `413` | permanent (see above) |
+| `prepare`, `open` | `400`, `422`, `409` (`409` is the same idempotency key with another body) | permanent |
+| `prepare`, `open` | `404` (Edge has not observed the receiver yet) | retry with backoff, counted by the attempt bound |
+| `status`, `chunk`, `finalize` | `404` (Edge expired, failed or dropped the token) | reopen the session |
+| `chunk`, `finalize` | `400` | retry; the next attempt reconciles through `status` |
+| any | `408`, `429`, `5xx` | retry with backoff, honouring `Retry-After` |
+| any | any other `4xx` | permanent |
+
+When no route rule applies and the body parses as an error envelope, its `retryable` member decides: `retryable: true` retries an otherwise permanent `4xx`, and `retryable: false` on a `5xx` or `429` is permanent. The route rules come first because Platform marks the `404` for a dead session `retryable: false`, yet reopening is the recovery.
+
+A resumption token that Edge dropped is not retried: the agent discards the token and the acknowledged chunks, and the next run opens a new session for the same operation with a new `Idempotency-Key` (the journal key plus `/session-<n>`) and sends the chunks again. One entry reopens at most `maxSessionReopens` times (default 3, kept in the journal checkpoint); the fourth drop fails the entry with the reason `session_expired`.
+
+Retries are bounded. `UploadRetryPolicy.maximumAttempts` (default 24, about one day at the 5 s initial delay doubling to the 3600 s cap) counts consecutive retryable failures; the next one fails the entry with the reason `retries_exhausted`. A capacity deferral does not count, and a chunk the receiver acknowledged resets the count. A failed entry shows its reason in the status menu ("Upload failed (retries exhausted)", "Upload failed (session expired)"), keeps its preserved archive, and waits for Retry Now, which gives it a fresh attempt and reopen budget.
+
 ## Duplicate handling
 
 The archive hash is the primary duplicate identity. Before upload, the agent asks Ratatoskr whether the content hash is already present.
