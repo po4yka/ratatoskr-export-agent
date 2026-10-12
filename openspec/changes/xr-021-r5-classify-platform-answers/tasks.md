@@ -19,4 +19,4 @@
 
 ## 5. Gate
 
-- [ ] 5.1 Run `swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, and `openspec validate --all --strict`; all pass. A gate run is not a behaviour and cannot start from a failing test. No live Edge exists on this machine, so no end-to-end run is claimed.
+- [x] 5.1 Run `swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, and `openspec validate --all --strict`; all pass. A gate run is not a behaviour and cannot start from a failing test. No live Edge exists on this machine, so no end-to-end run is claimed.
