@@ -47,7 +47,7 @@ extension UploadQueue {
       archiveURL: URL(filePath: path),
       fingerprint: queued.fingerprint,
       mediaType: "application/zip",
-      idempotencyKey: queued.idempotencyKey,
+      idempotencyKey: openIdempotencyKey(for: queued),
       checkpoint: session,
       transport: blobTransport,
       didOpenSession: { session in
@@ -88,7 +88,7 @@ extension UploadQueue {
     }
     _ = try await ResumableArchiveUploader(chunkSize: chunkSize).upload(
       archiveURL: archiveURL, fingerprint: queued.fingerprint, mediaType: "application/zip",
-      idempotencyKey: queued.idempotencyKey, checkpoint: session,
+      idempotencyKey: openIdempotencyKey(for: queued), checkpoint: session,
       transport: OperationReceiptTransport(
         provider: provider, operationID: operationID, transport: transport
       ),
@@ -112,18 +112,11 @@ extension UploadQueue {
     guard let previous = journal.entries.first(where: { $0.id == entryID }) else {
       throw LocalJournalError.missingEntry
     }
-    let checkpoint = previous.uploadCheckpoint
-    _ = try journal.checkpoint(
-      entryID: entryID,
-      upload: UploadCheckpoint(
-        resumptionToken: session.token,
-        chunkSizeBytes: session.chunkSizeBytes,
-        acknowledgedIndices: indices,
-        attemptCount: checkpoint?.attemptCount ?? 0,
-        nextRetryAt: checkpoint?.nextRetryAt,
-        control: checkpoint?.control ?? .active
-      )
-    )
+    var next = previous.uploadCheckpoint ?? UploadCheckpoint(chunkSizeBytes: session.chunkSizeBytes)
+    next.resumptionToken = session.token
+    next.chunkSizeBytes = session.chunkSizeBytes
+    next.acknowledgedIndices = indices
+    _ = try journal.checkpoint(entryID: entryID, upload: next)
     publishStatus()
   }
 }

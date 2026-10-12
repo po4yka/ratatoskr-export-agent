@@ -38,17 +38,15 @@ public extension LocalArchiveJournal {
     defer { lock.unlock() }
     guard let previous = projection[entryID], previous.state == .queued,
           let checkpoint = previous.uploadCheckpoint else { throw LocalJournalError.missingEntry }
-    let retryAt = control == .active ? now : checkpoint.nextRetryAt
-    return try self.checkpoint(
-      entryID: entryID,
-      upload: UploadCheckpoint(
-        resumptionToken: checkpoint.resumptionToken,
-        chunkSizeBytes: checkpoint.chunkSizeBytes,
-        acknowledgedIndices: checkpoint.acknowledgedIndices,
-        attemptCount: checkpoint.attemptCount,
-        nextRetryAt: retryAt,
-        control: control
-      )
-    )
+    var next = checkpoint
+    next.control = control
+    if control == .active {
+      // A manual retry is a fresh start: the attempt and reopen budgets and the failure reason are cleared.
+      next.nextRetryAt = now
+      next.attemptCount = 0
+      next.sessionReopens = 0
+      next.failureReason = nil
+    }
+    return try self.checkpoint(entryID: entryID, upload: next)
   }
 }

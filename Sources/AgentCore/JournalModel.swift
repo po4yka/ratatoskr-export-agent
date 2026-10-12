@@ -20,13 +20,22 @@ public struct UploadCheckpoint: Codable, Equatable, Sendable {
     case failed
   }
 
+  /// Why the queue stopped retrying an entry on its own. Absent for a failure that has no further detail.
+  public enum FailureReason: String, Codable, Sendable {
+    case retriesExhausted = "retries_exhausted"
+    case sessionExpired = "session_expired"
+  }
+
   /// An opaque receiver token, absent until the digest-first session opens.
-  public let resumptionToken: String?
-  public let chunkSizeBytes: Int
-  public let acknowledgedIndices: Set<Int>
-  public let attemptCount: Int
-  public let nextRetryAt: Date?
-  public let control: Control
+  public internal(set) var resumptionToken: String?
+  public internal(set) var chunkSizeBytes: Int
+  public internal(set) var acknowledgedIndices: Set<Int>
+  public internal(set) var attemptCount: Int
+  public internal(set) var nextRetryAt: Date?
+  public internal(set) var control: Control
+  /// How many times Platform dropped the session and the entry opened a new one.
+  public internal(set) var sessionReopens: Int
+  public internal(set) var failureReason: FailureReason?
 
   public init(
     resumptionToken: String? = nil,
@@ -34,7 +43,9 @@ public struct UploadCheckpoint: Codable, Equatable, Sendable {
     acknowledgedIndices: Set<Int> = [],
     attemptCount: Int = 0,
     nextRetryAt: Date? = nil,
-    control: Control = .active
+    control: Control = .active,
+    sessionReopens: Int = 0,
+    failureReason: FailureReason? = nil
   ) {
     self.resumptionToken = resumptionToken
     self.chunkSizeBytes = chunkSizeBytes
@@ -42,6 +53,8 @@ public struct UploadCheckpoint: Codable, Equatable, Sendable {
     self.attemptCount = attemptCount
     self.nextRetryAt = nextRetryAt
     self.control = control
+    self.sessionReopens = sessionReopens
+    self.failureReason = failureReason
   }
 }
 

@@ -9,6 +9,7 @@ public actor UploadQueue {
   let retryPolicy: UploadRetryPolicy
   let limiter: UploadAdmissionLimiter
   let chunkSize: Int
+  let maxSessionReopens: Int
   var statusContinuations: [UUID: AsyncStream<UploadQueueStatus>.Continuation] = [:]
 
   public init(
@@ -24,6 +25,7 @@ public actor UploadQueue {
     self.retryPolicy = retryPolicy
     self.limiter = limiter
     self.chunkSize = chunkSize
+    maxSessionReopens = AgentConfiguration.defaultMaxSessionReopens
   }
 
   /// Uses the validated version-1 transfer caps as the sole queue budget.
@@ -42,6 +44,7 @@ public actor UploadQueue {
       bytesPerTick: configuration.maxUploadBytesPerSecond
     )
     chunkSize = configuration.uploadChunkBytes
+    maxSessionReopens = configuration.maxSessionReopens
   }
 
   /// The production archive route: Platform creates and owns a pollable import operation before
@@ -62,6 +65,7 @@ public actor UploadQueue {
       bytesPerTick: configuration.maxUploadBytesPerSecond
     )
     chunkSize = configuration.uploadChunkBytes
+    maxSessionReopens = configuration.maxSessionReopens
   }
 
   /// Returns the durable projection through the queue actor's isolation.

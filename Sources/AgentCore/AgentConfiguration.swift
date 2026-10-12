@@ -26,12 +26,17 @@ public struct AgentConfiguration: Equatable, Sendable {
   /// Maximum total bytes the immutable local archive store may hold.
   public var maxArchiveStoreBytes: Int
 
+  /// How many times one entry may open a new session after Platform dropped the old one (404 on status, chunk or
+  /// finalize); the next drop fails the entry.
+  public var maxSessionReopens: Int
+
   /// Documented defaults applied when no configuration file exists: no
   /// backend URL yet, a 2 GiB archive ceiling, and up to two concurrent
   /// uploads.
   /// Documented default store budget applied when the field is absent.
   public static let defaultMaxArchiveStoreBytes = 20 * 1024 * 1024 * 1024
   public static let defaultUploadChunkBytes = 1_048_576
+  public static let defaultMaxSessionReopens = 3
   public static let defaultMaxUploadBytesPerSecond = 8 * 1_048_576
   public static let minimumUploadChunkBytes = 65536
   public static let maximumUploadChunkBytes = 16 * 1_048_576
@@ -43,7 +48,8 @@ public struct AgentConfiguration: Equatable, Sendable {
     maxConcurrentUploads: 2,
     uploadChunkBytes: Self.defaultUploadChunkBytes,
     maxUploadBytesPerSecond: Self.defaultMaxUploadBytesPerSecond,
-    maxArchiveStoreBytes: Self.defaultMaxArchiveStoreBytes
+    maxArchiveStoreBytes: Self.defaultMaxArchiveStoreBytes,
+    maxSessionReopens: Self.defaultMaxSessionReopens
   )
 
   public init(
@@ -52,7 +58,8 @@ public struct AgentConfiguration: Equatable, Sendable {
     maxConcurrentUploads: Int = 0,
     uploadChunkBytes: Int = AgentConfiguration.defaultUploadChunkBytes,
     maxUploadBytesPerSecond: Int = AgentConfiguration.defaultMaxUploadBytesPerSecond,
-    maxArchiveStoreBytes: Int = 0
+    maxArchiveStoreBytes: Int = 0,
+    maxSessionReopens: Int = AgentConfiguration.defaultMaxSessionReopens
   ) {
     self.backendBaseURL = backendBaseURL
     self.maxArchiveBytes = maxArchiveBytes
@@ -60,6 +67,7 @@ public struct AgentConfiguration: Equatable, Sendable {
     self.uploadChunkBytes = uploadChunkBytes
     self.maxUploadBytesPerSecond = maxUploadBytesPerSecond
     self.maxArchiveStoreBytes = maxArchiveStoreBytes
+    self.maxSessionReopens = maxSessionReopens
   }
 
   /// Loads the configuration document at the given file URL.

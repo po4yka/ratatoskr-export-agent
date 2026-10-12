@@ -11,35 +11,21 @@ extension UploadQueue {
   }
 
   func retryCheckpoint(for error: Error, from checkpoint: UploadCheckpoint, at now: Date) -> UploadCheckpoint {
+    var next = checkpoint
     switch error {
     case BlobReceiptTransportError.unavailable, PlatformDeviceTransportError.unavailable:
       return retryCheckpoint(from: checkpoint, at: now)
     case let BlobReceiptTransportError.retryAfter(retryAfter):
       return retryCheckpoint(from: checkpoint, at: now, retryAfter: retryAfter)
     case BlobReceiptTransportError.expiredSession:
-      let attempt = checkpoint.attemptCount + 1
-      return UploadCheckpoint(
-        chunkSizeBytes: chunkSize,
-        attemptCount: attempt,
-        nextRetryAt: retryPolicy.nextEligible(at: now, attempt: attempt)
-      )
+      return reopenCheckpoint(from: checkpoint, at: now)
     case BlobReceiptTransportError.capacityUnavailable:
-      return UploadCheckpoint(
-        resumptionToken: checkpoint.resumptionToken,
-        chunkSizeBytes: checkpoint.chunkSizeBytes,
-        acknowledgedIndices: checkpoint.acknowledgedIndices,
-        attemptCount: checkpoint.attemptCount,
-        nextRetryAt: now
-      )
+      next.nextRetryAt = now
     default:
-      return UploadCheckpoint(
-        resumptionToken: checkpoint.resumptionToken,
-        chunkSizeBytes: checkpoint.chunkSizeBytes,
-        acknowledgedIndices: checkpoint.acknowledgedIndices,
-        attemptCount: checkpoint.attemptCount,
-        control: .failed
-      )
+      next.control = .failed
+      next.nextRetryAt = nil
     }
+    return next
   }
 
   func retryCheckpoint(
@@ -47,14 +33,36 @@ extension UploadQueue {
     at now: Date,
     retryAfter: TimeInterval? = nil
   ) -> UploadCheckpoint {
-    let attempt = checkpoint.attemptCount + 1
-    return UploadCheckpoint(
-      resumptionToken: checkpoint.resumptionToken,
-      chunkSizeBytes: checkpoint.chunkSizeBytes,
-      acknowledgedIndices: checkpoint.acknowledgedIndices,
-      attemptCount: attempt,
-      nextRetryAt: retryPolicy.nextEligible(at: now, attempt: attempt, retryAfter: retryAfter)
-    )
+    var next = checkpoint
+    next.attemptCount += 1
+    next.nextRetryAt = retryPolicy.nextEligible(at: now, attempt: next.attemptCount, retryAfter: retryAfter)
+    return next
+  }
+
+  /// Platform dropped the session (404 on status, chunk or finalize): forget the token and the acknowledged chunks so
+  /// the next run opens a new session, at most `maxSessionReopens` times per entry (XR-021 CONTRACTS.md R5-05 rule 2).
+  func reopenCheckpoint(from checkpoint: UploadCheckpoint, at now: Date) -> UploadCheckpoint {
+    var next = checkpoint
+    next.resumptionToken = nil
+    next.acknowledgedIndices = []
+    next.chunkSizeBytes = chunkSize
+    next.sessionReopens += 1
+    next.attemptCount += 1
+    if next.sessionReopens > maxSessionReopens {
+      next.control = .failed
+      next.failureReason = .sessionExpired
+      next.nextRetryAt = nil
+    } else {
+      next.nextRetryAt = retryPolicy.nextEligible(at: now, attempt: next.attemptCount)
+    }
+    return next
+  }
+
+  /// The idempotency key of the next session open: the journal key for the first session, a distinct key per reopen
+  /// so Platform mints a new session instead of replaying the dead one.
+  func openIdempotencyKey(for entry: JournalEntry) -> String {
+    let reopens = entry.uploadCheckpoint?.sessionReopens ?? 0
+    return reopens == 0 ? entry.idempotencyKey : "\(entry.idempotencyKey)/session-\(reopens)"
   }
 
   func ensureCheckpoint(entryID: UUID, now: Date) throws {
