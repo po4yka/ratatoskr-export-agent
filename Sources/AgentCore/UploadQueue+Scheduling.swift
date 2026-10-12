@@ -115,6 +115,9 @@ extension UploadQueue {
     var next = previous.uploadCheckpoint ?? UploadCheckpoint(chunkSizeBytes: session.chunkSizeBytes)
     next.resumptionToken = session.token
     next.chunkSizeBytes = session.chunkSizeBytes
+    // The failure count is of consecutive failures: a chunk the receiver took is progress. A bare status answer
+    // that repeats what is already stored is not, or a permanently failing chunk upload would never run out.
+    if indices.count > next.acknowledgedIndices.count { next.attemptCount = 0 }
     next.acknowledgedIndices = indices
     _ = try journal.checkpoint(entryID: entryID, upload: next)
     publishStatus()

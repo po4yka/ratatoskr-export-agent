@@ -10,6 +10,11 @@ final class OfflineUploadQueueTests: XCTestCase {
     XCTAssertEqual(policy.nextEligible(at: now, attempt: 1, retryAfter: 20), now.addingTimeInterval(20))
   }
 
+  func testRetriesAreBoundedByDefaultAt24Attempts() {
+    XCTAssertEqual(UploadRetryPolicy().maximumAttempts, 24)
+    XCTAssertEqual(UploadRetryPolicy(initialDelay: 1, maximumDelay: 1, maximumAttempts: 3).maximumAttempts, 3)
+  }
+
   func testGlobalConcurrencyAndBandwidthCapsAreEnforced() async {
     let limiter = UploadAdmissionLimiter(maximumActive: 2, bytesPerTick: 100)
     let firstReservation = await limiter.reserve(bytes: 60)

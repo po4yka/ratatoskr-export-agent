@@ -4,10 +4,14 @@ import Foundation
 public struct UploadRetryPolicy: Sendable {
   public let initialDelay: TimeInterval
   public let maximumDelay: TimeInterval
+  /// Consecutive retryable failures an entry survives; the next one fails it. At the default delays 24 attempts
+  /// span about one day (XR-021 CONTRACTS.md section R5-05 rule 3).
+  public let maximumAttempts: Int
 
-  public init(initialDelay: TimeInterval = 5, maximumDelay: TimeInterval = 3600) {
+  public init(initialDelay: TimeInterval = 5, maximumDelay: TimeInterval = 3600, maximumAttempts: Int = 24) {
     self.initialDelay = initialDelay
     self.maximumDelay = maximumDelay
+    self.maximumAttempts = maximumAttempts
   }
 
   public func nextEligible(at now: Date, attempt: Int, retryAfter: TimeInterval? = nil) -> Date {

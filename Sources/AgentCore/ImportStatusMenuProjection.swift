@@ -9,12 +9,23 @@ public enum ImportStatusMenuProjection {
 
   private static func title(for entry: JournalEntry) -> String {
     let localID = String(entry.id.uuidString.prefix(8)).lowercased()
+    if entry.state == .queued, let checkpoint = entry.uploadCheckpoint, checkpoint.control == .failed {
+      return "\(localID): \(failedUploadTitle(checkpoint.failureReason))"
+    }
     if let observation = entry.backendImport {
       let state = backendTitle(observation.presentation)
       guard observation.observedAt != .distantPast else { return "\(localID): \(state)" }
       return "\(localID): \(state) — last known \(timestamp(observation.observedAt))"
     }
     return "\(localID): \(localTitle(entry.state))"
+  }
+
+  private static func failedUploadTitle(_ reason: UploadCheckpoint.FailureReason?) -> String {
+    switch reason {
+    case .retriesExhausted: "Upload failed (retries exhausted)"
+    case .sessionExpired: "Upload failed (session expired)"
+    case nil: "Upload failed"
+    }
   }
 
   private static func localTitle(_ state: JournalState) -> String {

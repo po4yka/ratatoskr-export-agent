@@ -10,8 +10,8 @@
 
 ## 3. Bounded retries (R5-05 rule 3)
 
-- [ ] 3.1 Add `UploadRetryPolicy` tests (`maximumAttempts` defaults to 24), queue tests (the 25th consecutive retryable failure fails with `retries_exhausted`; `capacityUnavailable` does not count; an acknowledged chunk resets the count) and extend `ImportStatusMenuTests` for the failed row with its reason. Add `maximumAttempts` as a neutral member first. Run and confirm the entry stays active after the 25th failure and the row shows no reason.
-- [ ] 3.2 Enforce the bound in `retryCheckpoint`, reset the count on chunk progress, and project the reason in `ImportStatusMenuProjection`. Rerun and confirm the tests pass.
+- [x] 3.1 Add `UploadRetryPolicy` tests (`maximumAttempts` defaults to 24), queue tests (the 25th consecutive retryable failure fails with `retries_exhausted`; `capacityUnavailable` does not count; an acknowledged chunk resets the count) and extend `ImportStatusMenuTests` for the failed row with its reason. Add `maximumAttempts` as a neutral member first. Run and confirm the entry stays active after the 25th failure and the row shows no reason.
+- [x] 3.2 Enforce the bound in `retryCheckpoint`, reset the count on chunk progress, and project the reason in `ImportStatusMenuProjection`. Rerun and confirm the tests pass.
 
 ## 4. Documentation
 

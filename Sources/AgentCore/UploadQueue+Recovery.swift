@@ -35,7 +35,13 @@ extension UploadQueue {
   ) -> UploadCheckpoint {
     var next = checkpoint
     next.attemptCount += 1
-    next.nextRetryAt = retryPolicy.nextEligible(at: now, attempt: next.attemptCount, retryAfter: retryAfter)
+    if next.attemptCount > retryPolicy.maximumAttempts {
+      next.control = .failed
+      next.failureReason = .retriesExhausted
+      next.nextRetryAt = nil
+    } else {
+      next.nextRetryAt = retryPolicy.nextEligible(at: now, attempt: next.attemptCount, retryAfter: retryAfter)
+    }
     return next
   }
 
