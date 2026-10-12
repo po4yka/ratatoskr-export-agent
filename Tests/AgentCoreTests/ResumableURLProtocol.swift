@@ -6,6 +6,9 @@ final class ResumableURLProtocol: URLProtocol, @unchecked Sendable {
   /// Answers a request before the recorder sees it; returning nil defers to the recorder.
   nonisolated(unsafe) static var interceptor: ((URLRequest) -> (Int, Data)?)?
 
+  /// Headers added to every answer (for example `Retry-After`); tests reset it in `tearDown`.
+  nonisolated(unsafe) static var responseHeaders: [String: String]?
+
   override static func canInit(with request: URLRequest) -> Bool { true }
   override static func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
@@ -13,7 +16,7 @@ final class ResumableURLProtocol: URLProtocol, @unchecked Sendable {
     let result =
       Self.interceptor?(request) ?? Self.recorder?.response(for: request) ?? (500, Data())
     let response = HTTPURLResponse(
-      url: request.url!, statusCode: result.0, httpVersion: "HTTP/1.1", headerFields: nil
+      url: request.url!, statusCode: result.0, httpVersion: "HTTP/1.1", headerFields: Self.responseHeaders
     )!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: result.1)

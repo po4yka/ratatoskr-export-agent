@@ -32,7 +32,7 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
         sha256: fingerprint.sha256Hex, byteSize: fingerprint.byteSize
       ))
     let (data, response) = try await perform(request)
-    guard response.statusCode == 202 else { throw response.transportError(body: data) }
+    guard response.statusCode == 202 else { throw classified(.prepare, response, data) }
     let body = try decode(PrepareResponse.self, from: data)
     guard body.status == "accepted", let operationID = UUID(uuidString: body.operationID) else {
       throw PlatformDeviceTransportError.invalidResponse
@@ -50,7 +50,7 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
     request.httpBody = try JSONEncoder().encode(declaration)
     let (data, response) = try await perform(request)
     guard response.statusCode == 201 || response.statusCode == 200 else {
-      throw response.transportError(body: data)
+      throw classified(.open, response, data)
     }
     let body = try decode(OpenTransferResponse.self, from: data)
     guard !body.resumptionToken.isEmpty, body.chunkSizeBytes > 0 else {
@@ -66,7 +66,7 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
       path: "\(transferPath(provider, operationID))/\(token)/status", method: "GET"
     )
     let (data, response) = try await perform(request)
-    guard response.statusCode == 200 else { throw response.transportError(body: data) }
+    guard response.statusCode == 200 else { throw classified(.status, response, data) }
     let body = try decode(TransferStatusResponse.self, from: data)
     guard body.resumptionToken == token else {
       throw PlatformDeviceTransportError.invalidResponse
@@ -85,7 +85,7 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
     request.httpBody = bytes
     let (data, response) = try await perform(request)
     guard response.statusCode == 204 || response.statusCode == 200 else {
-      throw response.transportError(body: data)
+      throw classified(.chunk, response, data)
     }
   }
 
@@ -98,7 +98,7 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try JSONEncoder().encode(FinalizeRequest(resumptionToken: token))
     let (data, response) = try await perform(request)
-    guard response.statusCode == 200 else { throw response.transportError(body: data) }
+    guard response.statusCode == 200 else { throw classified(.finalize, response, data) }
     let body = try decode(FinalizeResponse.self, from: data)
     guard body.outcome == "stored", let blob = body.blobRef,
       blob.digest.algorithm == "sha256"
@@ -125,6 +125,12 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
     "v1/ai-archives/\(provider.rawValue)/\(operationID.uuidString.lowercased())/uploads"
   }
 
+  private func classified(
+    _ route: PlatformArchiveRoute, _ response: HTTPURLResponse, _ body: Data
+  ) -> any Error {
+    PlatformAnswerClassifier(route: route, response: response, body: body).error
+  }
+
   private func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
     try await client.perform(request)
   }
@@ -132,17 +138,6 @@ public struct PlatformArchiveHTTPTransport: PlatformArchiveOperationTransport {
   private func decode<Value: Decodable>(_ type: Value.Type, from data: Data) throws -> Value {
     do { return try JSONDecoder().decode(type, from: data) } catch {
       throw PlatformDeviceTransportError.invalidResponse
-    }
-  }
-}
-
-extension HTTPURLResponse {
-  fileprivate func transportError(body: Data) -> PlatformDeviceTransportError {
-    switch statusCode {
-    case 401: PlatformAuthVerdict.transportError(forUnauthorizedBody: body)
-    case 403: .refusedPermanently
-    case 413: .payloadTooLarge
-    default: .unavailable
     }
   }
 }
