@@ -36,6 +36,21 @@ measured: the spike machine had installer 1.8.10, and the CLI needs 1.12.7 or la
 format is different, the new path is not found, the check is `unavailable`, and the hash pairing
 decides.
 
+### Pairing order and one check per scan batch
+
+When more than one waiting event can complete a pair, the watcher takes a different path with the
+same file name first (a folder rename moves `Old/X` to `New/X`, and files with identical content,
+such as empty files, must not pair across names), then the same path, then the nearest other path
+with an equal hash: the most equal path segments at the end, then the most equal characters at the
+start, then the first path in path order.
+
+`VaultRenameChecking.answer()` asks the check once and gives a `VaultRenameAnswer` that decides each
+pair of one scan batch. `VaultModeCoordinator` scans under its lock, asks the check outside the lock
+only when the batch can make a hash pair of two different paths, and then records the batch with that
+answer. One run of the CLI answers a folder rename of any size. While the check runs, a drain gives
+nothing, so a waiting event cannot leave before the batch that can pair it is recorded. The 2 second
+limit and the 60 second quiet period stay.
+
 ### Batches
 
 `VaultChangeBatch` holds at most 256 changes and encodes `{"changes": [...]}` with the keys of the

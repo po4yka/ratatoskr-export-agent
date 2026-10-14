@@ -155,9 +155,13 @@ final class VaultWatcherTests: XCTestCase {
 }
 
 private struct FixedRenameCheck: VaultRenameChecking {
-  let answer: VaultRenameVerdict
+  let verdict: VaultRenameVerdict
 
-  func verdict(renaming oldPath: String, to newPath: String) -> VaultRenameVerdict {
-    answer
+  init(answer: VaultRenameVerdict) {
+    verdict = answer
+  }
+
+  func answer() -> VaultRenameAnswer {
+    VaultRenameAnswer { [verdict] _, _ in verdict }
   }
 }

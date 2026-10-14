@@ -3,11 +3,18 @@ import Foundation
 /// The vault mode of the `cli` channel: the event source names paths, the
 /// scanner reads the disk, and the watcher pairs renames and numbers the
 /// changes. Final changes go to `onChanges` in sequence order.
+///
+/// The rename check can take up to 2 seconds, so the coordinator asks it at
+/// most once per scan batch and never while it holds its lock. While the
+/// check runs, `drain(at:)` gives nothing, so a waiting event cannot leave
+/// before the batch that can pair it is recorded.
 public final class VaultModeCoordinator: @unchecked Sendable {
   private let source: any VaultEventSource
   private let now: @Sendable () -> Date
   private let onChanges: @Sendable ([VaultChange]) -> Void
   private let lock = NSLock()
+  private let observing = NSLock()
+  private var checking = false
   private var scanner: VaultScanner
   private var watcher: VaultWatcher
   private var timer: DispatchSourceTimer?
@@ -60,20 +67,29 @@ public final class VaultModeCoordinator: @unchecked Sendable {
     }
   }
 
-  /// Compares the named paths with the disk and records what changed.
+  /// Compares the named paths with the disk and records what changed. Calls
+  /// run one after the other, so batches are recorded in scan order.
   public func observe(paths: [String], rescan: Bool) {
-    withLock {
-      let observations = rescan ? scanner.rescan() : scanner.scan(paths: paths)
-      let time = now()
-      for observation in observations {
-        watcher.record(observation, at: time)
+    observing.withLock {
+      let (observations, time, check) = withLock {
+        let observations = rescan ? scanner.rescan() : scanner.scan(paths: paths)
+        let time = now()
+        checking = watcher.needsRenameCheck(observations, at: time)
+        return (observations, time, checking ? watcher.renameCheck : nil)
+      }
+      let answer = check?.answer() ?? .unavailable
+      withLock {
+        for observation in observations {
+          watcher.record(observation, at: time, answer: answer)
+        }
+        checking = false
       }
     }
   }
 
   /// Delivers the changes that are final at `time`.
   public func drain(at time: Date) {
-    let changes = withLock { watcher.drain(at: time) }
+    let changes = withLock { checking ? [] : watcher.drain(at: time) }
     if !changes.isEmpty {
       onChanges(changes)
     }

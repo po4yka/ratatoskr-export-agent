@@ -26,9 +26,9 @@ public protocol ObsidianCLIRunning: Sendable {
 /// `obsidian vault=<name> files`. When the list holds the new path and not
 /// the old path, the rename is confirmed. When it holds both, Obsidian still
 /// has the old file and the pair is refuted. Any other answer is
-/// `unavailable`, and the hash pairing decides. After an unavailable answer
-/// the check does not ask again for `quietPeriod`, so a closed app does not
-/// slow a folder rename.
+/// `unavailable`, and the hash pairing decides. One run answers every pair of
+/// a scan batch. After an unavailable answer the check does not ask again for
+/// `quietPeriod`, so a closed app does not slow a folder rename.
 public final class ObsidianCLIRenameCheck: VaultRenameChecking, @unchecked Sendable {
   public static let defaultQuietPeriod: TimeInterval = 60
 
@@ -51,7 +51,9 @@ public final class ObsidianCLIRenameCheck: VaultRenameChecking, @unchecked Senda
     self.now = now
   }
 
-  public func verdict(renaming oldPath: String, to newPath: String) -> VaultRenameVerdict {
+  /// Runs the CLI once for a scan batch, or not at all inside the quiet
+  /// period. The answer reads the listed files for each pair of the batch.
+  public func answer() -> VaultRenameAnswer {
     lock.lock()
     defer {
       lock.unlock()
@@ -59,20 +61,37 @@ public final class ObsidianCLIRenameCheck: VaultRenameChecking, @unchecked Senda
     if let silentUntil, now() < silentUntil {
       return .unavailable
     }
-    let verdict = Self.verdict(renaming: oldPath, to: newPath, in: runner.run(["vault=\(vaultName)", "files"]))
-    silentUntil = verdict == .unavailable ? now().addingTimeInterval(quietPeriod) : nil
-    return verdict
-  }
-
-  private static func verdict(renaming oldPath: String, to newPath: String, in answer: ObsidianCLIAnswer?) -> VaultRenameVerdict {
-    guard let answer, answer.status == 0 else {
+    guard let known = Self.knownPaths(in: runner.run(["vault=\(vaultName)", "files"])) else {
+      silentUntil = now().addingTimeInterval(quietPeriod)
       return .unavailable
     }
-    let known = Set(
+    silentUntil = nil
+    return VaultRenameAnswer { [self] oldPath, newPath in
+      let verdict = Self.verdict(renaming: oldPath, to: newPath, known: known)
+      if verdict == .unavailable {
+        lock.withLock { silentUntil = now().addingTimeInterval(quietPeriod) }
+      }
+      return verdict
+    }
+  }
+
+  /// Asks once for one pair.
+  public func verdict(renaming oldPath: String, to newPath: String) -> VaultRenameVerdict {
+    answer().verdict(renaming: oldPath, to: newPath)
+  }
+
+  private static func knownPaths(in answer: ObsidianCLIAnswer?) -> Set<String>? {
+    guard let answer, answer.status == 0 else {
+      return nil
+    }
+    return Set(
       answer.output.split(whereSeparator: \.isNewline).map {
         VaultPaths.nfc($0.trimmingCharacters(in: .whitespaces))
       }
     )
+  }
+
+  private static func verdict(renaming oldPath: String, to newPath: String, known: Set<String>) -> VaultRenameVerdict {
     guard known.contains(VaultPaths.nfc(newPath)) else {
       return .unavailable
     }

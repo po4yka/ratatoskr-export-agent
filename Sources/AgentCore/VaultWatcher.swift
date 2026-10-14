@@ -1,12 +1,5 @@
 import Foundation
 
-/// One file system fact about a vault file, after the agent read the disk.
-public enum VaultObservation: Equatable, Sendable {
-  case created(path: String, sha256: String, byteLength: Int)
-  case modified(path: String, sha256: String, byteLength: Int)
-  case deleted(path: String, sha256: String)
-}
-
 /// Turns vault observations into the ordered changes of a batch.
 ///
 /// A create and a delete of two paths with equal hashes within
@@ -14,6 +7,9 @@ public enum VaultObservation: Equatable, Sendable {
 /// a rename outside Obsidian arrives as a create and, about 1 second later, a
 /// delete). An unpaired create or delete waits for the window and then leaves
 /// as it is. Changes leave in the order of observation.
+///
+/// When more than one waiting event can complete a pair, `VaultPairRank`
+/// chooses the partner.
 public struct VaultWatcher: Sendable {
   public static let pairingWindow: TimeInterval = 3
 
@@ -30,7 +26,9 @@ public struct VaultWatcher: Sendable {
     case waiting(VaultObservation, Date)
   }
 
-  private let renameCheck: any VaultRenameChecking
+  /// The second opinion on a hash pair. `VaultModeCoordinator` asks it once
+  /// per scan batch, outside its lock.
+  public let renameCheck: any VaultRenameChecking
   private var entries: [Entry] = []
   private var nextSequence: UInt64
 
@@ -40,13 +38,22 @@ public struct VaultWatcher: Sendable {
     self.renameCheck = renameCheck
   }
 
-  /// Records one observation at the time the agent made it.
+  /// Records one observation at the time the agent made it. Asks the rename
+  /// check only when the observation can make a hash pair.
   public mutating func record(_ observation: VaultObservation, at time: Date) {
+    let answer = needsRenameCheck([observation], at: time) ? renameCheck.answer() : .unavailable
+    record(observation, at: time, answer: answer)
+  }
+
+  /// Records one observation of a scan batch with the answer that the rename
+  /// check gave for that batch.
+  public mutating func record(_ observation: VaultObservation, at time: Date, answer: VaultRenameAnswer) {
     switch observation {
     case let .modified(path, sha256, byteLength):
       entries.append(.ready(Draft(kind: .updated, path: path, sha256: sha256, byteLength: byteLength)))
     case let .created(path, sha256, _), let .deleted(path, sha256):
-      guard let index = partnerIndex(of: path, sha256: sha256, isCreate: observation.isCreate, at: time) else {
+      guard let index = partnerIndex(of: path, sha256: sha256, isCreate: observation.isCreate, at: time, answer: answer)
+      else {
         entries.append(.waiting(observation, time))
         return
       }
@@ -84,24 +91,42 @@ public struct VaultWatcher: Sendable {
     return changes
   }
 
-  /// The waiting entry of the opposite kind that this observation completes.
-  private func partnerIndex(of path: String, sha256: String, isCreate: Bool, at time: Date) -> Int? {
-    entries.firstIndex { entry in
-      guard case let .waiting(other, observedAt) = entry,
-        other.isCreate != isCreate,
+  /// True when a create and a delete of two different paths with equal
+  /// hashes can pair, among the waiting events and these observations. Only
+  /// then does the rename check have something to answer.
+  public func needsRenameCheck(_ observations: [VaultObservation], at time: Date) -> Bool {
+    let waiting = entries.compactMap { entry -> VaultObservation? in
+      guard case let .waiting(observation, observedAt) = entry,
         time.timeIntervalSince(observedAt) < Self.pairingWindow
       else {
-        return false
+        return nil
       }
-      if other.path == path {
-        return true
+      return observation
+    }
+    return VaultPairRank.holdsHashPair(waiting + observations)
+  }
+
+  /// The waiting entry of the opposite kind that this observation completes.
+  private func partnerIndex(of path: String, sha256: String, isCreate: Bool, at time: Date, answer: VaultRenameAnswer) -> Int? {
+    var best: (index: Int, rank: VaultPairRank)?
+    for (index, entry) in entries.enumerated() {
+      guard case let .waiting(other, observedAt) = entry,
+        other.isCreate != isCreate,
+        time.timeIntervalSince(observedAt) < Self.pairingWindow,
+        let rank = VaultPairRank(of: other.path, against: path, sameHash: other.sha256 == sha256)
+      else {
+        continue
       }
-      guard other.sha256 == sha256 else {
-        return false
+      if let best, !(rank < best.rank) {
+        continue
       }
       let (oldPath, newPath) = isCreate ? (other.path, path) : (path, other.path)
-      return renameCheck.verdict(renaming: oldPath, to: newPath) != .refuted
+      if other.path != path, answer.verdict(renaming: oldPath, to: newPath) == .refuted {
+        continue
+      }
+      best = (index, rank)
     }
+    return best?.index
   }
 
   /// Replaces the waiting partner with the change that the two events make.
@@ -133,31 +158,6 @@ public struct VaultWatcher: Sendable {
       Draft(kind: .updated, path: path, sha256: sha256, byteLength: byteLength)
     case let .deleted(path, _):
       Draft(kind: .deleted, path: path)
-    }
-  }
-}
-
-extension VaultObservation {
-  var isCreate: Bool {
-    if case .created = self {
-      return true
-    }
-    return false
-  }
-
-  /// The NFC path relative to the vault root.
-  public var path: String {
-    switch self {
-    case let .created(path, _, _), let .modified(path, _, _), let .deleted(path, _):
-      path
-    }
-  }
-
-  /// The SHA-256 of the bytes, for a delete the last bytes seen.
-  public var sha256: String {
-    switch self {
-    case let .created(_, sha256, _), let .modified(_, sha256, _), let .deleted(_, sha256):
-      sha256
     }
   }
 }
