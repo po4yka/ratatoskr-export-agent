@@ -36,16 +36,29 @@ public protocol NotesChannelHTTP: Sendable {
 /// and no redirects.
 public struct PlatformNotesChannelHTTP: NotesChannelHTTP {
   private let origin: URL
+  private let client: AuthenticatedPlatformHTTPClient
 
   public init(origin: URL, authorizer: any PlatformRequestAuthorizing) {
-    self.origin = origin
+    let session = URLSession(configuration: .ephemeral, delegate: PlatformRedirectBlocker(), delegateQueue: nil)
+    self.init(origin: origin, authorizer: authorizer, session: session)
   }
 
   init(origin: URL, authorizer: any PlatformRequestAuthorizing, session: URLSession) {
     self.origin = origin
+    client = AuthenticatedPlatformHTTPClient(authorizer: authorizer, session: session)
   }
 
   public func perform(_ request: NotesChannelRequest) async throws -> NotesChannelAnswer {
-    NotesChannelAnswer(status: 0, body: Data())
+    guard let endpoint = URLSessionPlatformDeviceTransport.endpoint(for: origin, path: request.path) else {
+      throw PlatformDeviceTransportError.invalidOrigin
+    }
+    var unsigned = URLRequest(url: endpoint)
+    unsigned.httpMethod = request.method
+    unsigned.httpBody = request.body
+    if let contentType = request.contentType {
+      unsigned.setValue(contentType, forHTTPHeaderField: "Content-Type")
+    }
+    let (data, response) = try await client.perform(unsigned)
+    return NotesChannelAnswer(status: response.statusCode, body: data)
   }
 }
