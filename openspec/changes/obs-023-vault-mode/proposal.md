@@ -16,6 +16,9 @@ vault without Obsidian Sync and without the plugin. The agent has no vault mode 
 - Paths are NFC and relative to the vault root. A path with a segment that starts with `.`
   (`.obsidian/`, `.trash/`, `.DS_Store`) is not reported, as the vault API of the plugin does not
   report it.
+- `VaultModeCoordinator` connects the event source, the scanner and the watcher. At start it reads
+  the whole vault and returns the manifest (every indexed path with its hash), which the device sends
+  when it cannot prove that it saw every change. Lost FSEvents events make it compare the whole vault.
 - `VaultChangeBatch` encodes changes in the batch format of the plugin channel, at most 256 changes
   in one batch.
 

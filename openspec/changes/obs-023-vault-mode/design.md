@@ -26,11 +26,15 @@ change to the same path.
 ### The CLI check can only refute
 
 `VaultRenameChecking` answers `confirmed`, `refuted` or `unavailable` for a hash pair. Only
-`refuted` splits the pair. The real `ObsidianCLIRenameCheck` runs `obsidian vault=<name> file
-path=<path>` for the old path through an injected runner with a time limit. Exit status 0 means
-that Obsidian still knows the old path, so the pair is refuted. Any other answer, a missing
-executable, a time-out or a failure to start is `unavailable`. The command shape comes from the
-Obsidian CLI documentation and is not measured: the spike machine had installer 1.8.10.
+`refuted` splits the pair. The real `ObsidianCLIRenameCheck` runs `obsidian vault=<name> files`
+through an injected runner with a time limit of 2 seconds. When the list holds the new path and not
+the old path, the rename is confirmed. When it holds both, Obsidian still has the old file, and the
+pair is refuted. A missing executable, a time-out, a status other than 0, or a list without the new
+path is `unavailable`, and then the check does not ask again for 60 seconds, so a closed app does not
+slow a folder rename. The command shape comes from the Obsidian CLI documentation and is not
+measured: the spike machine had installer 1.8.10, and the CLI needs 1.12.7 or later. If the output
+format is different, the new path is not found, the check is `unavailable`, and the hash pairing
+decides.
 
 ### Batches
 
