@@ -108,6 +108,50 @@ final class VaultWatcherTests: XCTestCase {
     XCTAssertEqual(watcher.drain(at: start).map(\.path), ["A.md"], "a later change waits behind an unpaired create")
     XCTAssertEqual(watcher.drain(at: start.addingTimeInterval(3)).map(\.sequence), [8, 9])
   }
+
+  func testFolderRenameOfIdenticalFilesKeepsEachPathPair() {
+    var watcher = VaultWatcher(firstSequence: 1)
+    let empty = String(repeating: "e3", count: 32)
+
+    for name in ["A.md", "B.md", "C.md"] {
+      watcher.record(.deleted(path: "Old/\(name)", sha256: empty), at: start)
+    }
+    for name in ["C.md", "A.md", "B.md"] {
+      watcher.record(.created(path: "New/\(name)", sha256: empty, byteLength: 0), at: start.addingTimeInterval(1))
+    }
+
+    XCTAssertEqual(
+      watcher.drain(at: start.addingTimeInterval(1)).map { "\($0.previousPath ?? "-") -> \($0.path)" },
+      ["Old/C.md -> New/C.md", "Old/A.md -> New/A.md", "Old/B.md -> New/B.md"],
+      "a folder rename pairs each file with the file of the same name, never across names"
+    )
+  }
+
+  func testSamePathIsPreferredOverAnotherPathWithTheSameHash() {
+    var watcher = VaultWatcher(firstSequence: 1)
+
+    watcher.record(.deleted(path: "B.md", sha256: digest), at: start)
+    watcher.record(.deleted(path: "A.md", sha256: digest), at: start)
+    watcher.record(.created(path: "A.md", sha256: digest, byteLength: 3), at: start.addingTimeInterval(1))
+
+    XCTAssertEqual(
+      watcher.drain(at: start.addingTimeInterval(5)),
+      [
+        VaultChange(sequence: 1, kind: .deleted, path: "B.md"),
+        VaultChange(sequence: 2, kind: .updated, path: "A.md", sha256: digest, byteLength: 3),
+      ],
+      "a path written again pairs with its own delete, not with another delete of the same hash"
+    )
+  }
+
+  func testCreateThenDeleteInsideWindowSendsNothing() {
+    var watcher = VaultWatcher(firstSequence: 1)
+
+    watcher.record(.created(path: "Draft.md", sha256: digest, byteLength: 3), at: start)
+    watcher.record(.deleted(path: "Draft.md", sha256: digest), at: start.addingTimeInterval(2))
+
+    XCTAssertEqual(watcher.drain(at: start.addingTimeInterval(9)), [], "a file created and deleted inside 3 seconds is not sent")
+  }
 }
 
 private struct FixedRenameCheck: VaultRenameChecking {
