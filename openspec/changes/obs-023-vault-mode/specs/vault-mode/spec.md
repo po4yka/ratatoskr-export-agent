@@ -39,15 +39,25 @@ and the create as they are. When the check is unavailable, the agent SHALL keep 
 ### Requirement: A batch has the plugin format
 
 A batch SHALL hold at most 256 changes, in sequence order. Each change SHALL encode `sequence`,
-`kind`, the NFC `path`, `previous_path` for `renamed`, and `sha256` and `byte_length` except for
+`kind`, the NFC `path`, `previous_path` for `renamed`, and `sha256` and `length_bytes` except for
 `deleted`.
 
 #### Scenario: A renamed change is encoded
 
 - **WHEN** a batch with one `renamed` change is encoded
-- **THEN** the JSON has exactly the keys `sequence`, `kind`, `path`, `previous_path`, `sha256` and `byte_length`, verified by `VaultChangeBatchTests.testRenamedChangeHasPluginKeys`
+- **THEN** the JSON has exactly the keys `sequence`, `kind`, `path`, `previous_path`, `sha256` and `length_bytes`, verified by `VaultChangeBatchTests.testRenamedChangeHasPluginKeys`
 
 #### Scenario: 257 changes
 
 - **WHEN** 257 changes are split into batches
 - **THEN** the first batch holds 256 changes and the second holds 1, verified by `VaultChangeBatchTests.testSplitsAt256`
+
+### Requirement: The manifest is the vault scan
+
+The manifest SHALL hold one entry for each indexed file of the vault, in path order, and each entry
+SHALL encode the NFC `path`, `sha256` and `length_bytes`. An empty file is an entry.
+
+#### Scenario: A vault with a file and an empty file
+
+- **WHEN** the manifest of a scan of `A.md` (5 bytes) and `Notes/Empty.md` (0 bytes) is encoded
+- **THEN** the JSON is `{"entries":[...]}` with `A.md` first and `Notes/Empty.md` second, verified by `VaultManifestTests.testManifestOfTheScanHasTheNotesKeysInPathOrder`

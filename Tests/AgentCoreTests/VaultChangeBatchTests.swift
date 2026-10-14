@@ -15,7 +15,7 @@ final class VaultChangeBatchTests: XCTestCase {
 
     XCTAssertEqual(
       json,
-      #"{"changes":[{"byte_length":9,"kind":"renamed","path":"Projects/Plan.md","previous_path":"Plan.md","#
+      #"{"changes":[{"kind":"renamed","length_bytes":9,"path":"Projects/Plan.md","previous_path":"Plan.md","#
         + #""sequence":4,"sha256":"\#(digest)"}]}"#
     )
   }
