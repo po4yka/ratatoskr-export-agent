@@ -12,9 +12,9 @@ public enum VaultChangeKind: String, Codable, Equatable, Sendable {
 /// One entry of a change batch on `/v1/notes/connections/{id}/changes`.
 ///
 /// The path is NFC and relative to the vault root. `previousPath` is set only
-/// for `renamed`. `sha256` and `byteLength` describe the new bytes and are
-/// absent only for `deleted`. `sequence` is the device change sequence, which
-/// increases by one per change.
+/// for `renamed`. `sha256` and `byteLength` (`length_bytes` on the wire)
+/// describe the new bytes and are absent only for `deleted`. `sequence` is the
+/// device change sequence, which increases by one per change.
 public struct VaultChange: Codable, Equatable, Sendable {
   public var sequence: UInt64
   public var kind: VaultChangeKind
@@ -45,6 +45,6 @@ public struct VaultChange: Codable, Equatable, Sendable {
     case path
     case previousPath = "previous_path"
     case sha256
-    case byteLength = "byte_length"
+    case byteLength = "length_bytes"
   }
 }

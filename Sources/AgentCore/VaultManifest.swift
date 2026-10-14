@@ -26,7 +26,9 @@ public struct VaultManifest: Codable, Equatable, Sendable {
 
   /// Makes the manifest from the index of a vault scan.
   public init(index: [String: ArchiveFingerprint]) {
-    entries = []
+    entries = index.sorted { $0.key < $1.key }.map { path, fingerprint in
+      VaultManifestEntry(path: path, sha256: fingerprint.sha256Hex, lengthBytes: fingerprint.byteSize)
+    }
   }
 
   /// The JSON body. Keys are sorted so that equal manifests give equal bytes.

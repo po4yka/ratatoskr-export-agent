@@ -16,4 +16,4 @@
 ## 4. Wire types of the notes routes (workspace OBS-023 tasks 12.5 and 12.6)
 
 - [x] 4.1 RED: `Tests/AgentCoreTests/VaultChangeBatchTests.swift` `testRenamedChangeHasPluginKeys` expects the key `length_bytes` in place of `byte_length`, and `Tests/AgentCoreTests/VaultManifestTests.swift` `testManifestOfTheScanHasTheNotesKeysInPathOrder` expects the manifest of a vault scan as `{"entries":[{"length_bytes","path","sha256"}]}` in path order, with the empty file. Confirm that both fail by their assertions (a `VaultManifest` stub gives no entries).
-- [ ] 4.2 GREEN: `VaultChange` encodes `length_bytes`, and `VaultManifest(index:)` makes one entry for each indexed path, in path order. Verify 4.1 and the full suite.
+- [x] 4.2 GREEN: `VaultChange` encodes `length_bytes`, and `VaultManifest(index:)` makes one entry for each indexed path, in path order. Verify 4.1 and the full suite.
