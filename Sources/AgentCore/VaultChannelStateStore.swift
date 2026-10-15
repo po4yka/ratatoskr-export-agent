@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// What a restart needs to resume the `cli` channel of one vault. It holds no
 /// secret: the device credential stays in the Keychain.
@@ -27,20 +28,28 @@ public protocol VaultChannelStateStoring: Sendable {
 }
 
 /// One JSON file, `{"vaults":[...]}`, with the state of every watched vault.
-/// Each save writes the whole file atomically.
+/// Each save writes the whole file atomically. A file that does not decode
+/// is moved aside to `<name>.corrupt-<seconds>` with one log line, and the
+/// store starts empty, so one bad file cannot stop the saves for good.
 public actor FileVaultChannelStateStore: VaultChannelStateStoring {
   private struct Document: Codable {
     var vaults: [VaultChannelState]
   }
 
   private let fileURL: URL
+  private let now: @Sendable () -> Date
+  private let log: @Sendable (String) -> Void
 
   public init(
     fileURL: URL,
     now: @escaping @Sendable () -> Date = { Date() },
-    log: @escaping @Sendable (String) -> Void = { _ in }
+    log: @escaping @Sendable (String) -> Void = { line in
+      Logger(subsystem: "ratatoskr.export-agent", category: "vault-channels").error("\(line, privacy: .public)")
+    }
   ) {
     self.fileURL = fileURL
+    self.now = now
+    self.log = log
   }
 
   public func load(vaultKey: String) async throws -> VaultChannelState? {
@@ -73,6 +82,15 @@ public actor FileVaultChannelStateStore: VaultChannelStateStoring {
     guard FileManager.default.fileExists(atPath: fileURL.path) else {
       return Document(vaults: [])
     }
-    return try JSONDecoder().decode(Document.self, from: Data(contentsOf: fileURL))
+    let data = try Data(contentsOf: fileURL)
+    do {
+      return try JSONDecoder().decode(Document.self, from: data)
+    } catch {
+      let aside = fileURL.deletingLastPathComponent()
+        .appendingPathComponent("\(fileURL.lastPathComponent).corrupt-\(Int(now().timeIntervalSince1970))")
+      try FileManager.default.moveItem(at: fileURL, to: aside)
+      log("The vault channel state did not decode; it was moved to \(aside.lastPathComponent), and the store starts empty.")
+      return Document(vaults: [])
+    }
   }
 }
