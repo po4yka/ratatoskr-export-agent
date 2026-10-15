@@ -24,6 +24,31 @@ final class ObsidianCliApplyPathTests: ObsidianCliTestCase {
     XCTAssertFalse(server.routes.contains { $0.hasSuffix("/content") }, "no content is read for a refused path")
   }
 
+  func testBackslashesControlCharactersColonsAndTrailingDotsFailWithUnsafePath() async throws {
+    try write("a", to: "Notes/A.md")
+    let paths = [
+      "A\\.obsidian\\plugins\\x.md", "..\\x.md", "A\u{0}.md", "A\nB.md", "A\u{7F}.md", "Notes/.. /x.md", "Notes/. /x.md",
+      "A:B.md", "Notes./x.md", "Notes /x.md",
+    ]
+    let targets = ["Notes\\B.md", "Notes/B:C.md"]
+    let apply = try fakeObsidian(running: true, cases: "")
+    let server = queue(
+      paths.map { operation(kind: "update", path: $0, target: nil, base: nil, content: sha("beta")) }
+        + targets.map { operation(kind: "move", path: "Notes/A.md", target: $0, base: sha("a")) }
+    )
+    for _ in paths {
+      server.script("/content", status: 200, body: "beta")
+    }
+
+    let pass = try? await client(server).applyQueuedOperations(apply)
+
+    XCTAssertEqual(pass, .answered(paths.count + targets.count))
+    XCTAssertEqual(results(server), (paths + targets).map { _ in ["outcome": "failed", "code": "notes.write.unsafe_path"] })
+    XCTAssertEqual(try invocations(), [["version"]], "no CLI command runs for an unsafe path")
+    XCTAssertFalse(server.routes.contains { $0.hasSuffix("/content") }, "no content is read for an unsafe path")
+    XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: vault.path), ["Notes"], "nothing is written")
+  }
+
   func testMoveUsesObsidianMoveWithTheTargetPath() async throws {
     try write("x", to: "A/X.md")
     let apply = try fakeObsidian(

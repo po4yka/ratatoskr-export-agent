@@ -77,3 +77,14 @@ While operations of the queue wait and the Obsidian app does not run, the status
 
 - **WHEN** a pass finds an operation while the app does not run
 - **THEN** the sync status is `awaitingObsidian` and the title is `Vault <name>: waits for Obsidian`, verified by `VaultSyncObsidianStatusTests.testAPassThatWaitsForObsidianShowsInTheStatus` and `VaultStatusMenuProjectionTests.testAVaultThatWaitsForObsidianHasItsTitle`
+
+### Requirement: Separators, control characters and trailing dots are refused
+
+The agent SHALL report `failed` with `notes.write.unsafe_path` for a path or a target path that holds
+`\`, `:`, a C0 control character or DEL, a segment that ends in `.` or a space, or a first segment
+`.obsidian` in any case, before it reads the content or runs the CLI.
+
+#### Scenario: Twelve unsafe paths
+
+- **WHEN** the queue holds updates of `A\.obsidian\plugins\x.md`, `..\x.md`, `A\u{0}.md`, `A\nB.md`, `A\u{7F}.md`, `Notes/.. /x.md`, `Notes/. /x.md`, `A:B.md`, `Notes./x.md` and `Notes /x.md`, and moves to `Notes\B.md` and `Notes/B:C.md`
+- **THEN** each result is `failed` with `notes.write.unsafe_path`, only `obsidian version` runs, and nothing is written, verified by `ObsidianCliApplyPathTests.testBackslashesControlCharactersColonsAndTrailingDotsFailWithUnsafePath`

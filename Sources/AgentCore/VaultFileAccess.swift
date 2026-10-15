@@ -22,7 +22,7 @@ struct VaultFileAccess: Sendable {
     }
     let url = root.appendingPathComponent(path)
     var folder = url.deletingLastPathComponent()
-    while !FileManager.default.fileExists(atPath: folder.path) {
+    while !FileManager.default.fileExists(atPath: folder.path), folder.pathComponents.count > 1 {
       folder = folder.deletingLastPathComponent()
     }
     let resolved = folder.resolvingSymlinksInPath().standardizedFileURL.path
