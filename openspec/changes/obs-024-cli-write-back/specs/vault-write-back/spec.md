@@ -76,4 +76,4 @@ While operations of the queue wait and the Obsidian app does not run, the status
 #### Scenario: Obsidian is closed with a write in the queue
 
 - **WHEN** a pass finds an operation while the app does not run
-- **THEN** the sync status is `awaitingObsidian` and the title is `Vault <name>: waits for Obsidian`, verified by `VaultSyncStatusTests.testAPassThatWaitsForObsidianShowsInTheStatus` and `VaultStatusMenuProjectionTests.testAVaultThatWaitsForObsidianHasItsTitle`
+- **THEN** the sync status is `awaitingObsidian` and the title is `Vault <name>: waits for Obsidian`, verified by `VaultSyncObsidianStatusTests.testAPassThatWaitsForObsidianShowsInTheStatus` and `VaultStatusMenuProjectionTests.testAVaultThatWaitsForObsidianHasItsTitle`

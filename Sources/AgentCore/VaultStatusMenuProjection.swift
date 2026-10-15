@@ -8,6 +8,9 @@ public enum VaultSyncStatus: Equatable, Sendable {
   case retrying
   /// The notes service refused the vault with this code; nothing is sent.
   case stopped(code: String)
+  /// Writes wait in the queue of the connection while the Obsidian app does
+  /// not run.
+  case awaitingObsidian
 }
 
 /// One vault in the menu.
@@ -39,7 +42,7 @@ public enum VaultStatusMenuProjection {
   private static func state(_ status: VaultSyncStatus) -> String {
     switch status {
     case .connecting: "connecting"
-    case .connected: "connected"
+    case .connected, .awaitingObsidian: "connected"
     case .retrying: "offline, trying again"
     case .stopped(NotesFault.removed): "stopped, the connection was removed"
     case .stopped(NotesFault.channelMismatch): "stopped, another device or channel sends this vault"

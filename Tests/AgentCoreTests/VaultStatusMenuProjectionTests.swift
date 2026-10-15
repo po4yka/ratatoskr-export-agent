@@ -20,4 +20,11 @@ final class VaultStatusMenuProjectionTests: XCTestCase {
     )
     XCTAssertEqual(rows.map(VaultStatusMenuProjection.canConnectAgain), [false, false, false, false, true])
   }
+
+  func testAVaultThatWaitsForObsidianHasItsTitle() {
+    let row = VaultStatusRow(id: UUID(), displayName: "Work", status: .awaitingObsidian)
+
+    XCTAssertEqual(VaultStatusMenuProjection.title(row), "Vault Work: waits for Obsidian")
+    XCTAssertFalse(VaultStatusMenuProjection.canConnectAgain(row))
+  }
 }
