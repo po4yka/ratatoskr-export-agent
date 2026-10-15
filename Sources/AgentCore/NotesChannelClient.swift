@@ -52,6 +52,7 @@ public actor NotesChannelClient {
     vaultKey: String,
     vaultDisplayName: String,
     connectionID: String? = nil,
+    stateStore: (any VaultChannelStateStoring)? = nil,
     manifest: @escaping @Sendable () async -> VaultManifest
   ) {
     self.http = http

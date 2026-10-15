@@ -24,12 +24,13 @@ class NotesChannelTestCase: XCTestCase {
     }
   }
 
-  func client(_ server: FakeNotesServer) -> NotesChannelClient {
+  func client(_ server: FakeNotesServer, store: (any VaultChannelStateStoring)? = nil) -> NotesChannelClient {
     var scanner = VaultScanner(root: vault)
     _ = scanner.rescan()
     let manifest = VaultManifest(index: scanner.index)
     return NotesChannelClient(
-      http: server, vault: vault, vaultKey: "vault-key-1", vaultDisplayName: "Fixture", manifest: { manifest }
+      http: server, vault: vault, vaultKey: "vault-key-1", vaultDisplayName: "Fixture", stateStore: store,
+      manifest: { manifest }
     )
   }
 }

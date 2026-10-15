@@ -36,3 +36,8 @@
 
 - [x] 8.1 RED: `Tests/AgentCoreTests/NotesChannelRemovedTests.swift` asserts that a `410` `notes.connection.removed` on a change batch, and on an upload, stops the channel like `notes.channel_mismatch`: the error is `connectionRemoved`, the status is `stopped(code: "notes.connection.removed")`, the waiting changes are cleared, a later send or start makes no request, and the agent does not connect again. Confirm that both tests fail by their assertions (the answer is `refused(status: 410, ...)` and the channel stays connected).
 - [x] 8.2 GREEN: map `410` `notes.connection.removed` on every device route to `connectionRemoved`, and stop the channel on it as on `channelMismatch`. Verify 8.1 and the full suite.
+
+## 9. A restart resumes the saved connection (workspace OBS-023 tasks 12.13 and 12.14)
+
+- [x] 9.1 RED: `Tests/AgentCoreTests/NotesChannelStateTests.swift` asserts that a second client with the same `FileVaultChannelStateStore` resumes the saved connection with the manifest first and continues its sequence, that a saved connection that answers `404` `notes.connection.not_found` connects again and saves the new connection, and that the state file holds only `vault_key`, `connection_id` and `committed_sequence`. Confirm that all 3 fail by their assertions (a store stub saves nothing and loads nothing).
+- [ ] 9.2 GREEN: `FileVaultChannelStateStore` keeps the state of each vault in one JSON file, written atomically; the client loads it before its first connect and saves it after a connect, an applied manifest and a committed batch. Verify 9.1 and the full suite.
