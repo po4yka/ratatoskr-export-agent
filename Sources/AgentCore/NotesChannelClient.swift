@@ -71,7 +71,7 @@ public actor NotesChannelClient {
     do {
       try await reconcile()
     } catch {
-      throw stopOnMismatch(error)
+      throw stopOnRefusal(error)
     }
   }
 
@@ -91,7 +91,7 @@ public actor NotesChannelClient {
       }
       try await flushOrReconcile()
     } catch {
-      throw stopOnMismatch(error)
+      throw stopOnRefusal(error)
     }
   }
 
@@ -159,17 +159,23 @@ public actor NotesChannelClient {
   }
 
   private func checkNotStopped() throws {
-    if case .stopped = status {
-      throw NotesChannelError.channelMismatch
+    if case .stopped(let code) = status {
+      throw code == NotesFault.removed ? NotesChannelError.connectionRemoved : NotesChannelError.channelMismatch
     }
   }
 
-  private func stopOnMismatch(_ error: any Error) -> any Error {
-    if case NotesChannelError.channelMismatch = error {
-      status = .stopped(code: NotesFault.channelMismatch)
-      pending.removeAll()
-      ready = false
+  /// A refusal that no retry can change stops the channel: another device or
+  /// channel owns the vault, or the owner removed the connection.
+  private func stopOnRefusal(_ error: any Error) -> any Error {
+    let code: String
+    switch error {
+    case NotesChannelError.channelMismatch: code = NotesFault.channelMismatch
+    case NotesChannelError.connectionRemoved: code = NotesFault.removed
+    default: return error
     }
+    status = .stopped(code: code)
+    pending.removeAll()
+    ready = false
     return error
   }
 }

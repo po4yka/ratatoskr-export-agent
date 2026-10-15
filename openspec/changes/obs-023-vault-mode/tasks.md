@@ -35,4 +35,4 @@
 ## 8. A removed connection stops the channel (workspace OBS-023 tasks 12.11 and 12.12)
 
 - [x] 8.1 RED: `Tests/AgentCoreTests/NotesChannelRemovedTests.swift` asserts that a `410` `notes.connection.removed` on a change batch, and on an upload, stops the channel like `notes.channel_mismatch`: the error is `connectionRemoved`, the status is `stopped(code: "notes.connection.removed")`, the waiting changes are cleared, a later send or start makes no request, and the agent does not connect again. Confirm that both tests fail by their assertions (the answer is `refused(status: 410, ...)` and the channel stays connected).
-- [ ] 8.2 GREEN: map `410` `notes.connection.removed` on every device route to `connectionRemoved`, and stop the channel on it as on `channelMismatch`. Verify 8.1 and the full suite.
+- [x] 8.2 GREEN: map `410` `notes.connection.removed` on every device route to `connectionRemoved`, and stop the channel on it as on `channelMismatch`. Verify 8.1 and the full suite.

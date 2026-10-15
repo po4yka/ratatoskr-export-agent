@@ -59,6 +59,7 @@ struct NotesFault: Decodable {
   }
 
   static let notFound = "notes.connection.not_found"
+  static let removed = "notes.connection.removed"
   static let channelMismatch = "notes.channel_mismatch"
   static let sequenceGap = "notes.channel.sequence_gap"
   static let bytesMissing = "notes.channel.bytes_missing"
@@ -72,6 +73,7 @@ struct NotesFault: Decodable {
     let code = of(answer)?.code
     switch (answer.status, code) {
     case (404, notFound): return .connectionGone
+    case (410, removed): return .connectionRemoved
     case (409, channelMismatch): return .channelMismatch
     default: return .refused(status: answer.status, code: code)
     }
