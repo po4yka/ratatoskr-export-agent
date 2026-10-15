@@ -28,6 +28,14 @@ public enum ObsidianVaultKey {
     return decoded.vaults.sorted { $0.key < $1.key }.first { canonical($0.value.path) == wanted }?.key
   }
 
+  /// Whether `config` decodes as the vault list of Obsidian.
+  public static func isVaultList(_ config: URL) -> Bool {
+    guard let data = try? Data(contentsOf: config) else {
+      return false
+    }
+    return (try? JSONDecoder().decode(Config.self, from: data)) != nil
+  }
+
   private static func canonical(_ path: String) -> String {
     URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
   }

@@ -114,10 +114,30 @@ public final class WatchedVaultRegistry {
     }
   }
 
-  /// Gives each vault whose key Obsidian now names that key, and clears the
-  /// saved state of the old key. Returns the old keys.
-  public func adoptObsidianKeys(clearing store: any VaultChannelStateStoring) async -> [String] {
-    []
+  /// Gives each vault whose key Obsidian now names that key, for example a
+  /// vault that got a generated key before the owner granted `obsidian.json`.
+  /// The saved notes state of the old key is removed, so the sync of the
+  /// vault connects again with the key of Obsidian. The connection of the
+  /// old key stays in notes until the owner removes it. Returns the old keys.
+  public func adoptObsidianKeys(clearing states: any VaultChannelStateStoring) async -> [String] {
+    var old: [String] = []
+    for index in vaults.indices {
+      guard let resolved = try? bookmarkStore.resolvedFolder(from: vaults[index].bookmarkData),
+            let key = vaultKey(resolved.url), key != vaults[index].vaultKey,
+            !vaults.contains(where: { $0.vaultKey == key }) else {
+        continue
+      }
+      old.append(vaults[index].vaultKey)
+      vaults[index].vaultKey = key
+    }
+    guard !old.isEmpty else {
+      return []
+    }
+    try? store.save(vaults)
+    for key in old {
+      try? await states.remove(vaultKey: key)
+    }
+    return old
   }
 
   /// Removes a vault and ends the access to its folder.

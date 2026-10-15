@@ -12,6 +12,7 @@ final class SettingsWindowController: NSWindowController {
   init(
     registry: WatchedFolderRegistry,
     vaultRegistry: WatchedVaultRegistry,
+    obsidianGrant: ObsidianConfigGrant,
     session: DeviceSessionCoordinator,
     onFoldersChanged: @escaping () -> Void = {}
   ) {
@@ -20,6 +21,8 @@ final class SettingsWindowController: NSWindowController {
     vaultViewModel = VaultSettingsViewModel(
       registry: vaultRegistry,
       picker: OpenPanelFolderPicker(message: "Choose the folder of an Obsidian vault to send to Ratatoskr Notes."),
+      grant: obsidianGrant,
+      configPicker: OpenPanelObsidianConfigPicker(),
       onChange: onFoldersChanged
     )
     let window = NSWindow(

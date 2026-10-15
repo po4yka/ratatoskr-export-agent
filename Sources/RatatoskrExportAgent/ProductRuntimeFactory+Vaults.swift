@@ -2,12 +2,22 @@ import AgentCore
 import Foundation
 
 extension ProductRuntimeFactory {
+  /// The grant of the owner to read `obsidian.json`, a bookmark in
+  /// `obsidian-config.bookmark` of the support directory.
+  static func makeObsidianGrant(support: URL) -> ObsidianConfigGrant {
+    ObsidianConfigGrant(
+      bookmarkFile: support.appending(path: "obsidian-config.bookmark"), bookmarkStore: SecurityScopedBookmarkStore()
+    )
+  }
+
   /// The watched Obsidian vaults, in `vault-preferences.json` of the support
-  /// directory.
-  static func makeVaultRegistry(support: URL) throws -> WatchedVaultRegistry {
+  /// directory. The key of a vault comes from `obsidian.json`, read directly
+  /// or through the grant of the owner.
+  static func makeVaultRegistry(support: URL, grant: ObsidianConfigGrant) throws -> WatchedVaultRegistry {
     try WatchedVaultRegistry(
       store: FileWatchedVaultStore(fileURL: support.appending(path: "vault-preferences.json")),
-      bookmarkStore: SecurityScopedBookmarkStore()
+      bookmarkStore: SecurityScopedBookmarkStore(),
+      vaultKey: { ObsidianVaultKey.key(forVault: $0, config: ObsidianVaultKey.userConfig) ?? grant.key(forVault: $0) }
     )
   }
 
@@ -19,7 +29,10 @@ extension ProductRuntimeFactory {
     let http = SessionBoundNotesChannelHTTP(session: session)
     let store = FileVaultChannelStateStore(fileURL: support.appending(path: "vault-channels.json"))
     return VaultRuntimeComponent(
-      vaults: { await registry.runtimeVaults() },
+      vaults: {
+        _ = await registry.adoptObsidianKeys(clearing: store)
+        return await registry.runtimeVaults()
+      },
       makeSync: { runtime in
         VaultChannelSync(
           coordinator: { onChanges in

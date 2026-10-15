@@ -12,9 +12,13 @@ struct VaultRow: Identifiable, Equatable {
 final class VaultSettingsViewModel: ObservableObject {
   @Published private(set) var changeFailure: String?
   @Published private(set) var rows: [VaultRow] = []
+  /// Whether the owner granted the vault list of Obsidian (`obsidian.json`).
+  @Published private(set) var canReadVaultList = false
 
   private let registry: WatchedVaultRegistry
   private let picker: any FolderPicking
+  private let grant: ObsidianConfigGrant?
+  private let configPicker: (any FolderPicking)?
   private let onChange: () -> Void
 
   init(
@@ -26,17 +30,25 @@ final class VaultSettingsViewModel: ObservableObject {
   ) {
     self.registry = registry
     self.picker = picker
+    self.grant = grant
+    self.configPicker = configPicker
     self.onChange = onChange
     refresh()
   }
 
-  /// Whether the agent can read the vault list of Obsidian.
-  var canReadVaultList: Bool {
-    false
-  }
-
   /// Asks the owner once to pick `obsidian.json`, and keeps a bookmark of it.
-  func allowReadingVaultList() {}
+  /// The refresh that follows gives each vault the key of Obsidian.
+  func allowReadingVaultList() {
+    guard let grant, let url = configPicker?.pickFolder() else { return }
+    do {
+      try grant.grant(config: url)
+      changeFailure = nil
+      onChange()
+    } catch {
+      changeFailure = "The file is not the vault list of Obsidian (obsidian.json)."
+    }
+    refresh()
+  }
 
   /// Runs the folder picker and registers the chosen vault.
   func addVaultFromPicker() {
@@ -60,5 +72,6 @@ final class VaultSettingsViewModel: ObservableObject {
 
   private func refresh() {
     rows = registry.vaults.map { VaultRow(id: $0.id, displayName: $0.displayName) }
+    canReadVaultList = grant?.isGranted ?? false
   }
 }

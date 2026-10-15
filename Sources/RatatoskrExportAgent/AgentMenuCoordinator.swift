@@ -44,6 +44,7 @@ final class AgentMenuCoordinator: NSObject {
       settingsWindowController = SettingsWindowController(
         registry: graph.registry,
         vaultRegistry: graph.vaultRegistry,
+        obsidianGrant: graph.obsidianGrant,
         session: graph.session,
         onFoldersChanged: { [weak self] in self?.refreshFolders() }
       )

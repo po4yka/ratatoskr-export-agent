@@ -10,17 +10,42 @@ public final class ObsidianConfigGrant: @unchecked Sendable {
     case notTheVaultList
   }
 
-  public init(bookmarkFile: URL, bookmarkStore: any FolderBookmarkStoring) {}
+  private let bookmarkFile: URL
+  private let bookmarkStore: any FolderBookmarkStoring
 
-  public var isGranted: Bool {
-    false
+  public init(bookmarkFile: URL, bookmarkStore: any FolderBookmarkStoring) {
+    self.bookmarkFile = bookmarkFile
+    self.bookmarkStore = bookmarkStore
   }
 
-  /// Saves a bookmark of `config` when it is a vault list of Obsidian.
-  public func grant(config: URL) throws {}
+  public var isGranted: Bool {
+    FileManager.default.fileExists(atPath: bookmarkFile.path)
+  }
+
+  /// Saves a bookmark of `config` when it is a vault list of Obsidian. The
+  /// open panel that picked it gives this process access to read it now.
+  public func grant(config: URL) throws {
+    guard config.lastPathComponent == "obsidian.json", ObsidianVaultKey.isVaultList(config) else {
+      throw GrantError.notTheVaultList
+    }
+    let data = try bookmarkStore.makeBookmarkData(for: config)
+    try FileManager.default.createDirectory(at: bookmarkFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try data.write(to: bookmarkFile, options: .atomic)
+  }
 
   /// The vault id of `vault`, read through the bookmark; nil without a grant.
+  /// An access that this call begins, it also ends.
   public func key(forVault vault: URL) -> String? {
-    nil
+    guard let data = try? Data(contentsOf: bookmarkFile),
+          let resolved = try? bookmarkStore.resolvedFolder(from: data) else {
+      return nil
+    }
+    let began = bookmarkStore.startAccessing(resolved)
+    defer {
+      if began {
+        bookmarkStore.stopAccessing(resolved)
+      }
+    }
+    return ObsidianVaultKey.key(forVault: vault, config: resolved.url)
   }
 }

@@ -33,6 +33,12 @@ struct VaultSettingsView: View {
             .foregroundStyle(.red)
         }
         Spacer()
+        if !viewModel.canReadVaultList {
+          Button("Allow reading the Obsidian vault list…") {
+            viewModel.allowReadingVaultList()
+          }
+          .help("Pick obsidian.json once, so each vault uses the vault key of Obsidian, as the plugin does.")
+        }
         Button("Add Vault…") {
           viewModel.addVaultFromPicker()
         }
