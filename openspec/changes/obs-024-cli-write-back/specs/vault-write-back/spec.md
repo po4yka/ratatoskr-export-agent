@@ -88,3 +88,14 @@ The agent SHALL report `failed` with `notes.write.unsafe_path` for a path or a t
 
 - **WHEN** the queue holds updates of `A\.obsidian\plugins\x.md`, `..\x.md`, `A\u{0}.md`, `A\nB.md`, `A\u{7F}.md`, `Notes/.. /x.md`, `Notes/. /x.md`, `A:B.md`, `Notes./x.md` and `Notes /x.md`, and moves to `Notes\B.md` and `Notes/B:C.md`
 - **THEN** each result is `failed` with `notes.write.unsafe_path`, only `obsidian version` runs, and nothing is written, verified by `ObsidianCliApplyPathTests.testBackslashesControlCharactersColonsAndTrailingDotsFailWithUnsafePath`
+
+### Requirement: A local error settles the operation
+
+An error of the apply step that is not an error of the content read SHALL settle the operation as
+`failed` with `notes.channel.refused`, and the pass SHALL go on with the next operation. An error of
+the content read SHALL end the pass and leave the operation in the queue.
+
+#### Scenario: A folder at the path
+
+- **WHEN** the queue holds an update of `Folder.md`, which is a folder, and then an update of `A.md`
+- **THEN** the first result is `failed` with `notes.channel.refused`, and `A.md` is applied in the same pass, verified by `ObsidianCliApplyLocalTests.testALocalErrorFailsTheOperationAndThePassGoesOn`
