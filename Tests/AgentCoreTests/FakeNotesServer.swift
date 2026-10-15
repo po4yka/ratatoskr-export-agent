@@ -91,6 +91,9 @@ final class FakeNotesServer: NotesChannelHTTP, @unchecked Sendable {
     guard changes.count <= maximumChanges else {
       return Self.json(413, #"{"code":"notes.channel.batch_too_large","message":"m","retryable":false,"max_changes":256}"#)
     }
+    if changes.contains(where: { $0.kind != .deleted && ($0.sha256 == nil || $0.byteLength == nil) }) {
+      return Self.json(400, #"{"code":"notes.request.invalid","message":"m","retryable":false}"#)
+    }
     if let first = changes.first, first.sequence > storedCommitted + 1 {
       return Self.json(
         409,
