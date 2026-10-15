@@ -37,3 +37,43 @@ The HTTPS binding of the notes routes SHALL send the part of a path after `?` as
 
 - **WHEN** the client reads `v1/notes/connections/c1/device-operations?after=7`
 - **THEN** the URL is `https://ratatoskr.example/v1/notes/connections/c1/device-operations?after=7`, verified by `NotesChannelHTTPTests.testQueryOfThePathIsSentAsAQuery`
+
+### Requirement: An unsafe path is refused
+
+The agent SHALL report `failed` with `notes.write.unsafe_path`, and SHALL NOT read the content or
+change a file, for a path that is absolute, that has an empty, `.` or `..` segment or a segment that
+starts with `.`, whose nearest existing folder resolves outside the vault, or that is a symbolic link.
+
+#### Scenario: Seven unsafe paths
+
+- **WHEN** the queue holds updates of `/etc/x.md`, `../x.md`, `A//B.md`, `./A.md`, `.obsidian/app.json`, `Link/x.md` (a link to a folder outside the vault) and `Leak.md` (a link to a file outside the vault)
+- **THEN** each result is `failed` with `notes.write.unsafe_path`, and the file outside the vault does not change, verified by `ObsidianCliApplyPathTests.testUnsafePathsFailWithUnsafePath`
+
+### Requirement: The hash after `property:set` is the hash of the changed file
+
+After `obsidian property:set` or `property:remove`, when the file still has the base hash, the agent
+SHALL wait once and read the hash again before it reports the result.
+
+#### Scenario: Obsidian writes the frontmatter late
+
+- **WHEN** the file changes only after the CLI returned
+- **THEN** the result has the hash of the changed file, verified by `ObsidianCliApplyResultTests.testSetPropertyReadsTheHashAgainWhenTheFileDidNotChangeYet`
+
+### Requirement: The CLI holds no thread of the cooperative pool
+
+The agent SHALL run each Obsidian CLI command on a dedicated thread.
+
+#### Scenario: The thread of a CLI run
+
+- **WHEN** the agent runs the CLI for a pass
+- **THEN** each run is on a thread named `obsidian-cli`, verified by `ObsidianCliApplyResultTests.testTheCLIRunsOnItsOwnThread`
+
+### Requirement: The menu shows a vault that waits for Obsidian
+
+While operations of the queue wait and the Obsidian app does not run, the status of the vault SHALL be
+`awaitingObsidian`, and the menu SHALL show `Vault <name>: waits for Obsidian`.
+
+#### Scenario: Obsidian is closed with a write in the queue
+
+- **WHEN** a pass finds an operation while the app does not run
+- **THEN** the sync status is `awaitingObsidian` and the title is `Vault <name>: waits for Obsidian`, verified by `VaultSyncStatusTests.testAPassThatWaitsForObsidianShowsInTheStatus` and `VaultStatusMenuProjectionTests.testAVaultThatWaitsForObsidianHasItsTitle`

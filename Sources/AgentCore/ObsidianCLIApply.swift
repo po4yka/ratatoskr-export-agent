@@ -24,12 +24,17 @@ public struct ObsidianCLIApply: Sendable {
   let vaultName: String
   let runner: any ObsidianCLIRunning
   let obsidianRunning: @Sendable () -> Bool
+  let settle: @Sendable () async -> Void
 
-  public init(vault: URL, vaultName: String, runner: any ObsidianCLIRunning, obsidianRunning: @escaping @Sendable () -> Bool) {
+  public init(
+    vault: URL, vaultName: String, runner: any ObsidianCLIRunning, obsidianRunning: @escaping @Sendable () -> Bool,
+    settle: @escaping @Sendable () async -> Void = {}
+  ) {
     files = VaultFileAccess(root: vault)
     self.vaultName = vaultName
     self.runner = runner
     self.obsidianRunning = obsidianRunning
+    self.settle = settle
   }
 
   /// Whether the app runs and its CLI answers `obsidian version`.
