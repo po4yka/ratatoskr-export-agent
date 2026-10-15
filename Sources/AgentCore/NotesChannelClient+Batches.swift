@@ -38,6 +38,7 @@ extension NotesChannelClient {
       case (200, _):
         let committed = try decodeNotesAnswer(NotesBatchCommitted.self, from: answer).committedSequence
         pending.removeAll { $0.sequence <= committed }
+        await saveState(committed: committed)
       case (409, NotesFault.sequenceGap):
         guard let committed = fault?.committedSequence else {
           throw NotesChannelError.invalidAnswer

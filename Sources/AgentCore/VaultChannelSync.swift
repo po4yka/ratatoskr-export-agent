@@ -24,7 +24,8 @@ public final class VaultChannelSync: @unchecked Sendable {
     vault: URL,
     vaultKey: String,
     vaultDisplayName: String,
-    connectionID: String? = nil
+    connectionID: String? = nil,
+    stateStore: (any VaultChannelStateStoring)? = nil
   ) {
     (changes, continuation) = AsyncStream.makeStream(of: [VaultChange].self)
     let continuation = continuation
@@ -32,7 +33,7 @@ public final class VaultChannelSync: @unchecked Sendable {
     self.coordinator = made
     client = NotesChannelClient(
       http: http, vault: vault, vaultKey: vaultKey, vaultDisplayName: vaultDisplayName,
-      connectionID: connectionID, manifest: { made.manifest() }
+      connectionID: connectionID, stateStore: stateStore, manifest: { made.manifest() }
     )
   }
 

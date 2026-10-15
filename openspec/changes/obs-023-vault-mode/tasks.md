@@ -40,4 +40,4 @@
 ## 9. A restart resumes the saved connection (workspace OBS-023 tasks 12.13 and 12.14)
 
 - [x] 9.1 RED: `Tests/AgentCoreTests/NotesChannelStateTests.swift` asserts that a second client with the same `FileVaultChannelStateStore` resumes the saved connection with the manifest first and continues its sequence, that a saved connection that answers `404` `notes.connection.not_found` connects again and saves the new connection, and that the state file holds only `vault_key`, `connection_id` and `committed_sequence`. Confirm that all 3 fail by their assertions (a store stub saves nothing and loads nothing).
-- [ ] 9.2 GREEN: `FileVaultChannelStateStore` keeps the state of each vault in one JSON file, written atomically; the client loads it before its first connect and saves it after a connect, an applied manifest and a committed batch. Verify 9.1 and the full suite.
+- [x] 9.2 GREEN: `FileVaultChannelStateStore` keeps the state of each vault in one JSON file, written atomically; the client loads it before its first connect and saves it after a connect, an applied manifest and a committed batch. Verify 9.1 and the full suite.

@@ -25,8 +25,13 @@ public protocol VaultChannelStateStoring: Sendable {
   func save(_ state: VaultChannelState) async throws
 }
 
-/// One JSON file with the state of every watched vault.
+/// One JSON file, `{"vaults":[...]}`, with the state of every watched vault.
+/// Each save writes the whole file atomically.
 public actor FileVaultChannelStateStore: VaultChannelStateStoring {
+  private struct Document: Codable {
+    var vaults: [VaultChannelState]
+  }
+
   private let fileURL: URL
 
   public init(fileURL: URL) {
@@ -34,8 +39,23 @@ public actor FileVaultChannelStateStore: VaultChannelStateStoring {
   }
 
   public func load(vaultKey: String) async throws -> VaultChannelState? {
-    nil
+    try document().vaults.first { $0.vaultKey == vaultKey }
   }
 
-  public func save(_ state: VaultChannelState) async throws {}
+  public func save(_ state: VaultChannelState) async throws {
+    var vaults = try document().vaults.filter { $0.vaultKey != state.vaultKey }
+    vaults.append(state)
+    vaults.sort { $0.vaultKey < $1.vaultKey }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try encoder.encode(Document(vaults: vaults)).write(to: fileURL, options: .atomic)
+  }
+
+  private func document() throws -> Document {
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+      return Document(vaults: [])
+    }
+    return try JSONDecoder().decode(Document.self, from: Data(contentsOf: fileURL))
+  }
 }
