@@ -38,22 +38,42 @@ extension NotesChannelClient {
         return .awaitingObsidian
       }
       for operation in page.operations {
-        let outcome = try await apply.apply(operation) { try await self.content(of: operation) }
-        guard let result = DeviceOperationResult(outcome) else {
+        guard let result = try await result(of: operation, apply, onLocalChange: onLocalChange) else {
           return .awaitingObsidian
         }
-        if let change = localChange(of: outcome, operation) {
-          onLocalChange([change])
-        }
-        try await uploadRewrites(of: outcome, operation)
         try await report(result, of: operation)
+        unsentResults[operation.operationID] = nil
         answered += 1
       }
       guard page.operations.count >= Self.queuePageSize else {
+        // The queue lists no operation of a result that is still kept.
+        unsentResults.removeAll()
         return .answered(answered)
       }
       cursor = page.nextCursor
     }
+  }
+
+  /// The result of `operation`: the result that notes did not take on an
+  /// earlier pass, or the result of a new apply, kept until notes takes it.
+  /// Nil when the operation waits for Obsidian.
+  private func result(
+    of operation: DeviceOperation, _ apply: ObsidianCLIApply, onLocalChange: @Sendable ([VaultChange]) -> Void
+  ) async throws -> DeviceOperationResult? {
+    if let kept = unsentResults[operation.operationID] {
+      return kept
+    }
+    let outcome = try await apply.apply(operation) { try await self.content(of: operation) }
+    guard let result = DeviceOperationResult(outcome) else {
+      return nil
+    }
+    unsentResults[operation.operationID] = result
+    let changes = localChanges(of: outcome, operation)
+    if !changes.isEmpty {
+      onLocalChange(changes)
+    }
+    try await uploadRewrites(of: outcome, operation)
+    return result
   }
 
   private func queuePage(after cursor: String?) async throws -> DeviceOperationPage {
@@ -107,18 +127,17 @@ extension NotesChannelClient {
     )
   }
 
-  /// The change that sends the local file of a base mismatch: the file of
-  /// the operation, or the linking note that refused the group.
-  private func localChange(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) -> VaultChange? {
+  /// The changes that send the local files of a base mismatch: the file of
+  /// the operation, or each linking note that does not have its base hash.
+  private func localChanges(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) -> [VaultChange] {
     switch outcome {
     case .baseMismatch(let local):
       let kind: VaultChangeKind = local == nil ? .deleted : (operation.baseHash == nil ? .created : .updated)
-      return VaultChange(sequence: 0, kind: kind, path: operation.path)
-    case .rewriteMismatch(let path):
-      let exists = FileManager.default.fileExists(atPath: vault.appendingPathComponent(path).path)
-      return VaultChange(sequence: 0, kind: exists ? .updated : .deleted, path: path)
+      return [VaultChange(sequence: 0, kind: kind, path: operation.path)]
+    case .rewriteMismatch(_, let rewrites):
+      return rewrites.filter(\.differs).map { VaultChange(sequence: 0, kind: $0.sha256 == nil ? .deleted : .updated, path: $0.path) }
     default:
-      return nil
+      return []
     }
   }
 

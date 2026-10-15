@@ -99,7 +99,7 @@ public struct ObsidianCLIApply: Sendable {
     guard local == operation.baseHash else {
       return .baseMismatch(localSHA256: local)
     }
-    if let refused = try rewriteMismatch(notes) {
+    if let refused = try rewriteMismatch(notes, local: local) {
       return refused
     }
     if let refused = try await change(operation, source: source, target: target, content: content) {

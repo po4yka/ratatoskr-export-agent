@@ -77,9 +77,10 @@ public enum DeviceOperationOutcome: Equatable, Sendable {
   case applied(sha256: String?, rewrites: [RewriteOutcome] = [])
   /// The local file did not have the base hash; nothing changed.
   case baseMismatch(localSHA256: String?)
-  /// The linking note at `path` did not have its base hash; nothing of the
-  /// group changed.
-  case rewriteMismatch(path: String)
+  /// A linking note did not have its base hash; nothing of the group
+  /// changed. `localSHA256` is the hash of the renamed file, and `rewrites`
+  /// names every linking note with its own hash.
+  case rewriteMismatch(localSHA256: String?, rewrites: [RewriteOutcome])
   /// The operation cannot be applied; the code names the cause.
   case failed(code: String)
   /// Obsidian does not run or its CLI does not answer; the operation stays
@@ -99,9 +100,11 @@ struct DeviceOperationResult: Encodable {
     switch outcome {
     case .applied(let sha256, let rewrites):
       (self.outcome, self.sha256, localSHA256, code) = ("applied", sha256, nil, nil)
-      self.rewrites = rewrites.map(RewriteResultBody.init)
+      self.rewrites = rewrites.map(RewriteResultBody.init(applied:))
     case .baseMismatch(let local): (self.outcome, sha256, localSHA256, code) = ("base_mismatch", nil, local, nil)
-    case .rewriteMismatch: (self.outcome, sha256, localSHA256, code) = ("base_mismatch", nil, nil, nil)
+    case .rewriteMismatch(let local, let rewrites):
+      (self.outcome, sha256, localSHA256, code) = ("base_mismatch", nil, local, nil)
+      self.rewrites = rewrites.map(RewriteResultBody.init(mismatch:))
     case .failed(let code): (self.outcome, sha256, localSHA256, self.code) = ("failed", nil, nil, code)
     case .awaitingObsidian: return nil
     }

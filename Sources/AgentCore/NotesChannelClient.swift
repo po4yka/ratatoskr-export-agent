@@ -51,6 +51,9 @@ public actor NotesChannelClient {
   /// The last pass over the queue of the writes ended because Obsidian does
   /// not run or its CLI does not answer.
   var waitsForObsidian = false
+  /// The results that notes did not take yet, by operation id; the next
+  /// pass sends them again in place of a new apply.
+  var unsentResults: [String: DeviceOperationResult] = [:]
   private var nextSequence: UInt64 = 1
 
   public init(

@@ -228,16 +228,18 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   the local file. It applies `create`, `rename`, `move`, `delete` and `set_property` with the
   Obsidian CLI (`obsidian rename` and `obsidian move` update the links, and `obsidian delete` moves
   the file to the trash and never gets `permanent`). A rename lists its linking notes: the agent
-  checks the base hash of each before the CLI, refuses the whole rename when one differs, and
-  reports the hash of each after the CLI, uploading the bytes that notes does not expect. It applies
-  `update` with an atomic write in the vault folder. A path that resolves outside the vault, that
-  has a segment that starts with `.` or ends in `.` or a space, or that holds `\`, `:`, a control
-  character or DEL, is refused with `notes.write.unsafe_path`. Any other local error (for example a
-  folder at the path) fails the operation with `notes.channel.refused`, and the agent goes on with
-  the next one. The agent reads at most the `length_bytes` of the content and one byte, and refuses
-  longer content. A create that finds the empty file of its own earlier `obsidian create` writes the
-  bytes and does not run the CLI again. Each CLI command runs on a thread of its own. Its own
-  changes come back through the watcher, and notes takes them as the acknowledgements of the writes.
+  checks the base hash of each before the CLI, refuses the whole rename when one differs (naming
+  each note with its own hash), and reports the hash of each after the CLI, uploading the bytes that
+  notes does not expect. A result that notes does not take with `200` is sent again on the next
+  pass, without a new apply. It applies `update` with an atomic write in the vault folder. A path
+  that resolves outside the vault, that has a segment that starts with `.` or ends in `.` or a
+  space, or that holds `\`, `:`, a control character or DEL, is refused with
+  `notes.write.unsafe_path`. Any other local error (for example a folder at the path) fails the
+  operation with `notes.channel.refused`, and the agent goes on with the next one. The agent reads
+  at most the `length_bytes` of the content and one byte, and refuses longer content. A create that
+  finds the empty file of its own earlier `obsidian create` writes the bytes and does not run the
+  CLI again. Each CLI command runs on a thread of its own. Its own changes come back through the
+  watcher, and notes takes them as the acknowledgements of the writes.
 - **Obsidian 1.12.7 or later.** The writes need the Obsidian CLI, which the Obsidian installer 1.12.7
   or later registers (Settings → General → Command line interface). The CLI answers only while the
   app runs, and its first command starts the app. So the agent does not run the CLI while Obsidian

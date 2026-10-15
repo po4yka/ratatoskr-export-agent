@@ -84,8 +84,19 @@ and stops after the bound and one byte, so the agent never holds more. Content l
 Notes lists a rename or a move with `rewrites`: the path, the base hash and the expected hash of each
 linking note. Before the CLI, the agent checks the path and the base hash of each note; a refused path
 fails the group with `notes.write.unsafe_path`, and a base mismatch refuses the group with a top-level
-`base_mismatch` (no `local_sha256`, because the mismatch is not in the renamed file) and gives the note
-to the change buffer. After the CLI, the agent hashes each note (once more after `settle` when a note
+`base_mismatch` with the hash of the renamed file and a `base_mismatch` entry with its own hash (null
+when gone) for every listed note, and gives each note that differs to the change buffer. Notes refuses
+an `applied` entry inside a `base_mismatch`. After the CLI, the agent hashes each note (once more after `settle` when a note
 still has its base hash), uploads each hash that is not the expected hash, and lists the notes in the
 `rewrites` of the `applied` result. A note that is gone is listed as `base_mismatch`. The agent has no
 plain-move path: a rename or a move always runs the Obsidian CLI, which updates the links.
+
+### A result is sent again
+
+Notes takes a result only with `200`. The client keeps each result by operation id until notes answers
+`200` or `404` `notes.device_operation.not_found`. After a `5xx` or a network error the pass ends, the
+operation stays in the queue, and the next pass sends the kept result in place of a new apply, which
+could find its own change as a base mismatch (a `set_property` has no expected hash). A full pass
+forgets the kept results, because the queue no longer lists their operations. The results are kept
+in memory: after a restart the agent applies again, and the checks of an operation that is already
+in the vault cover every kind but `set_property`.
