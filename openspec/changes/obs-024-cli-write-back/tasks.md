@@ -29,7 +29,7 @@
 ## 7. A local error settles the operation (workspace OBS-024 tasks 12.9 and 12.10)
 
 - [x] 7.1 RED: `Tests/AgentCoreTests/ObsidianCliApplyLocalTests.swift` `testALocalErrorFailsTheOperationAndThePassGoesOn` queues an update of `Folder.md`, which is a folder, and then an update of `A.md`. It asserts that the first result is `failed` with `notes.channel.refused` and that the second is applied in the same pass. Confirm that it fails by its assertions (the error ends the pass).
-- [ ] 7.2 GREEN: an error of the apply step that is not an error of the content read gives `failed` with `notes.channel.refused`; an error of the content read (the transport) still ends the pass. A file that is not a regular file has no hash. Verify 7.1 and the full suite.
+- [x] 7.2 GREEN: an error of the apply step that is not an error of the content read gives `failed` with `notes.channel.refused`; an error of the content read (the transport) still ends the pass. A file that is not a regular file has no hash. Verify 7.1 and the full suite.
 
 ## 8. Base mismatch, update and `set_property` (workspace OBS-024 tasks 12.11 and 12.12)
 

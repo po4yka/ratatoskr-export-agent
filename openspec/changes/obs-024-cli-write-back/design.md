@@ -58,3 +58,10 @@ Obsidian can write the frontmatter after the CLI returned. When the file still h
 The CLI runner blocks until the process ends, for up to 30 seconds. Each run is on a dedicated
 thread named `obsidian-cli`, and the pass awaits it through a continuation, so no thread of the
 cooperative pool waits for Obsidian.
+
+### Local errors and transport errors
+
+An error of the content read is a transport error: the pass ends, and the operation stays in the
+queue for the next pass. Any other error of the apply step (a folder at the path, a failed write, bytes
+that do not match their digest) settles the operation as `failed` with `notes.channel.refused`, the
+code of the plugin, and the pass goes on with the next operation.

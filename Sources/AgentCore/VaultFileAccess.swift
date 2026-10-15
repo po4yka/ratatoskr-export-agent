@@ -42,10 +42,14 @@ struct VaultFileAccess: Sendable {
     !segment.isEmpty && !segment.hasPrefix(".") && !segment.hasSuffix(".") && !segment.hasSuffix(" ")
   }
 
-  /// The SHA-256 of the file, or nil when there is no file.
+  /// The SHA-256 of the file, or nil when there is no file. A path that is
+  /// not a regular file (a folder) has no hash and throws.
   func sha256(at url: URL) throws -> String? {
     guard FileManager.default.fileExists(atPath: url.path) else {
       return nil
+    }
+    guard try FileManager.default.attributesOfItem(atPath: url.path)[.type] as? FileAttributeType == .typeRegular else {
+      throw CocoaError(.fileReadUnknown)
     }
     return try StreamingHasher().fingerprint(at: url).sha256Hex
   }

@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// The apply step of the `cli` channel (workspace spec `notes-write-delivery`).
@@ -18,6 +17,8 @@ public struct ObsidianCLIApply: Sendable {
     static let targetExists = "export_agent.write.target_exists"
     static let cliFailed = "export_agent.write.obsidian_failed"
     static let unsupported = "export_agent.write.unsupported_operation"
+    /// A local error: the code that the plugin gives for the same case.
+    static let refused = "notes.channel.refused"
   }
 
   let files: VaultFileAccess
@@ -58,8 +59,32 @@ public struct ObsidianCLIApply: Sendable {
     }
   }
 
-  /// Applies one operation. `content` reads its bytes from notes.
-  func apply(_ operation: DeviceOperation, content: @Sendable () async throws -> Data) async throws -> DeviceOperationOutcome {
+  /// Applies one operation. `content` reads its bytes from notes. An error
+  /// of that read (the transport) ends the pass and leaves the operation in
+  /// the queue; any other error settles it as `failed` with
+  /// `notes.channel.refused`, so the pass goes on.
+  func apply(
+    _ operation: DeviceOperation, content: @escaping @Sendable () async throws -> Data
+  ) async throws -> DeviceOperationOutcome {
+    let reading: @Sendable () async throws -> Data = {
+      do {
+        return try await content()
+      } catch {
+        throw ContentReadError(underlying: error)
+      }
+    }
+    do {
+      return try await applyChecked(operation, content: reading)
+    } catch let failure as ContentReadError {
+      throw failure.underlying
+    } catch {
+      return .failed(code: Code.refused)
+    }
+  }
+
+  private func applyChecked(
+    _ operation: DeviceOperation, content: @Sendable () async throws -> Data
+  ) async throws -> DeviceOperationOutcome {
     guard let source = files.url(of: operation.path), let target = files.url(of: operation.resultPath) else {
       return .failed(code: Code.unsafePath)
     }
@@ -76,78 +101,6 @@ public struct ObsidianCLIApply: Sendable {
     return .applied(sha256: try await resultHash(operation, at: target))
   }
 
-  /// The hash of the file after the operation. Obsidian can write the
-  /// frontmatter of a `set_property` after the CLI returned, so a file that
-  /// still has the base hash is read once more after `settle`.
-  private func resultHash(_ operation: DeviceOperation, at target: URL) async throws -> String? {
-    let hash = try files.sha256(at: target)
-    guard operation.kind == "set_property", hash == operation.baseHash else {
-      return hash
-    }
-    await settle()
-    return try files.sha256(at: target)
-  }
-
-  /// Makes the change of the operation. Nil when the vault has it.
-  private func change(
-    _ operation: DeviceOperation, source: URL, target: URL, content: @Sendable () async throws -> Data
-  ) async throws -> DeviceOperationOutcome? {
-    switch operation.kind {
-    case "update":
-      try files.write(try await verified(content(), operation), to: source)
-      return nil
-    case "create":
-      let bytes = try await verified(content(), operation)
-      if let refused = await run(["create", "path=\(operation.path)"], expecting: { FileManager.default.fileExists(atPath: source.path) }) {
-        return refused
-      }
-      try files.write(bytes, to: source)
-      return nil
-    case "rename", "move":
-      return await move(operation, from: source, to: target)
-    case "delete":
-      return await run(["delete", "path=\(operation.path)"]) { !FileManager.default.fileExists(atPath: source.path) }
-    case "set_property":
-      return try await setProperty(operation, content: content)
-    default:
-      return .failed(code: Code.unsupported)
-    }
-  }
-
-  /// An operation that a pass before this one applied, and whose result
-  /// did not reach notes: an `update` or a `create` whose file has the hash of
-  /// the content, a `rename` or a `move` whose source is gone and whose target
-  /// has the base hash, or a `delete` whose file is gone.
-  private func alreadyApplied(_ operation: DeviceOperation, local: String?, target: URL) throws -> DeviceOperationOutcome? {
-    switch (operation.kind, local) {
-    case ("update", .some), ("create", .some):
-      return local == operation.contentSHA256 ? .applied(sha256: local) : nil
-    case ("delete", nil):
-      return operation.baseHash == nil ? nil : .applied(sha256: nil)
-    case ("rename", nil), ("move", nil):
-      let moved = try files.sha256(at: target)
-      return operation.baseHash != nil && moved == operation.baseHash ? .applied(sha256: moved) : nil
-    default:
-      return nil
-    }
-  }
-
-  /// A rename that keeps the folder and the extension is `obsidian rename`;
-  /// every other rename and move is `obsidian move`. Both update the links.
-  private func move(_ operation: DeviceOperation, from source: URL, to target: URL) async -> DeviceOperationOutcome? {
-    guard !FileManager.default.fileExists(atPath: target.path) else {
-      return .failed(code: Code.targetExists)
-    }
-    let sameFolder = source.deletingLastPathComponent() == target.deletingLastPathComponent()
-    let arguments =
-      operation.kind == "rename" && sameFolder && source.pathExtension == target.pathExtension
-      ? ["rename", "path=\(operation.path)", "name=\(target.deletingPathExtension().lastPathComponent)"]
-      : ["move", "path=\(operation.path)", "to=\(operation.resultPath)"]
-    return await run(arguments) {
-      FileManager.default.fileExists(atPath: target.path) && !FileManager.default.fileExists(atPath: source.path)
-    }
-  }
-
   /// Runs one CLI command on the vault. Nil when the command ran and the disk
   /// shows its effect; `awaitingObsidian` when the CLI gave no answer.
   func run(_ command: [String], expecting effect: () -> Bool = { true }) async -> DeviceOperationOutcome? {
@@ -159,13 +112,9 @@ public struct ObsidianCLIApply: Sendable {
     }
     return nil
   }
+}
 
-  /// The bytes of the operation, when their hash is the hash of its content.
-  private func verified(_ data: Data, _ operation: DeviceOperation) throws -> Data {
-    let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-    guard digest == operation.contentSHA256 else {
-      throw NotesChannelError.invalidAnswer
-    }
-    return data
-  }
+/// An error of the content read, which the apply step gives back as it is.
+private struct ContentReadError: Error {
+  let underlying: any Error
 }
