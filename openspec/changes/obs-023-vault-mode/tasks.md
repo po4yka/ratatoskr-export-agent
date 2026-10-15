@@ -50,3 +50,8 @@
 ## 11. Gate (after workspace OBS-023 task 12.18)
 
 - [x] 11.1 Run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-023-vault-mode --strict`. A gate run is not a behaviour and cannot start from a failing test. Workspace tasks 12.15 and 12.16 (the vault mode in the app configuration and start) are not done here: no settings surface or runtime component for a vault exists yet.
+
+## 12. The vault key of the plugin (workspace OBS-023 tasks 12.15 and 12.16)
+
+- [x] 12.1 RED: `Tests/AgentCoreTests/ObsidianVaultKeyTests.swift` reads a fixture `obsidian.json` in a temporary directory and asserts that the key of a vault is its vault id of Obsidian (the `app.appId` that the plugin sends as `vault_key`), also for a path with a trailing slash and for a linked path, and that an unknown vault, a missing file and an invalid file give no key. Confirm that the first two fail by their assertions (a stub gives no key); the third passes before the change, because the stub gives no key for every input.
+- [ ] 12.2 GREEN: `ObsidianVaultKey.key(forVault:config:)` finds the entry of `vaults` in `obsidian.json` whose `path` is the vault path after both resolve their links. Verify 12.1 and the full suite.
