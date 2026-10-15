@@ -27,3 +27,7 @@
 
 - [x] 6.1 RED: `Tests/AgentCoreTests/VaultChannelSyncTests.swift` `testWatchedVaultSendsItsManifestAfterTheConnectAndItsBatchesAfter` starts a `VaultChannelSync` on a temporary vault with a scripted event source and the fake notes transport, creates `B.md`, drains, and asserts the order connect, manifest (with `A.md`), manifest, change batch `[1]`, and that a stop stops the event source. Confirm that it fails by its assertions (a `VaultChannelSync` stub sends nothing).
 - [x] 6.2 GREEN: `VaultChannelSync` starts the coordinator, starts the client (connect and manifest of the coordinator index), and then gives each drained change list to the client in order through one task. Verify 6.1 and the full suite.
+
+## 7. Gate (after workspace OBS-023 task 12.10)
+
+- [x] 7.1 Run the gates of `ci.yml` (`swift build`, `swift test`, `swift build -c release`, the release `--smoke` launch, `Tests/Distribution/run.sh`, `swiftlint`, the DEVELOPMENT.md drift check), the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-023-vault-mode --strict`. A gate run is not a behaviour and cannot start from a failing test.

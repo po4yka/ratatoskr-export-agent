@@ -31,8 +31,10 @@ vault without Obsidian Sync and without the plugin. The agent has no vault mode 
 
 ## Impact
 
-- Affects `AgentCore` only. No UI, pairing, connect call, blob upload or batch send is wired in this
-  change. Those need the notes routes of OBS-023 group 8, which do not exist yet.
+- Affects `AgentCore` only. Groups 4 to 6 of the tasks (workspace tasks 12.5 to 12.10) add the
+  client of the notes routes of OBS-023 group 8: the connect, the manifest, the uploads and the
+  change batches, and `VaultChannelSync`, which sends a watched vault through it. No UI, vault
+  configuration or app start of the vault mode is wired in this change.
 - Cites the workspace spec `notes-device-channels` (batch bounds, sequence, kinds) instead of
   restating it.
 - The real Obsidian CLI is never run in tests. The machine of the spike had installer 1.8.10, and
