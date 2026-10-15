@@ -114,6 +114,12 @@ public final class WatchedVaultRegistry {
     }
   }
 
+  /// Gives each vault whose key Obsidian now names that key, and clears the
+  /// saved state of the old key. Returns the old keys.
+  public func adoptObsidianKeys(clearing store: any VaultChannelStateStoring) async -> [String] {
+    []
+  }
+
   /// Removes a vault and ends the access to its folder.
   public func removeVault(id: UUID) {
     guard let index = vaults.firstIndex(where: { $0.id == id }) else {

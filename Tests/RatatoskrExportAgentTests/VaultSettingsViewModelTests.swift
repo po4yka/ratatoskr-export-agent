@@ -38,6 +38,31 @@ final class VaultSettingsViewModelTests: XCTestCase {
   }
 }
 
+extension VaultSettingsViewModelTests {
+  func testAllowReadingTheVaultListGrantsThePickedFile() throws {
+    defer { try? FileManager.default.removeItem(at: root) }
+    let config = root.appendingPathComponent("obsidian.json")
+    try Data(#"{"vaults":{}}"#.utf8).write(to: config)
+    let registry = try WatchedVaultRegistry(
+      store: FileWatchedVaultStore(fileURL: root.appendingPathComponent("vault-preferences.json")),
+      bookmarkStore: SettingsVaultBookmarkStub(), vaultKey: { _ in nil }, newKey: { "generated-key" }
+    )
+    let grant = ObsidianConfigGrant(bookmarkFile: root.appendingPathComponent("grant.bookmark"), bookmarkStore: SettingsVaultBookmarkStub())
+    var changes = 0
+    let viewModel = VaultSettingsViewModel(
+      registry: registry, picker: PickedFolder(url: root), grant: grant, configPicker: PickedFolder(url: config),
+      onChange: { changes += 1 }
+    )
+    let before = viewModel.canReadVaultList
+
+    viewModel.allowReadingVaultList()
+
+    XCTAssertFalse(before)
+    XCTAssertTrue(viewModel.canReadVaultList)
+    XCTAssertEqual(changes, 1, "a grant runs the refresh, which adopts the Obsidian keys")
+  }
+}
+
 @MainActor
 private struct PickedFolder: FolderPicking {
   let url: URL

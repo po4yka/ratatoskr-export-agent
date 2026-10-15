@@ -17,12 +17,26 @@ final class VaultSettingsViewModel: ObservableObject {
   private let picker: any FolderPicking
   private let onChange: () -> Void
 
-  init(registry: WatchedVaultRegistry, picker: any FolderPicking, onChange: @escaping () -> Void = {}) {
+  init(
+    registry: WatchedVaultRegistry,
+    picker: any FolderPicking,
+    grant: ObsidianConfigGrant? = nil,
+    configPicker: (any FolderPicking)? = nil,
+    onChange: @escaping () -> Void = {}
+  ) {
     self.registry = registry
     self.picker = picker
     self.onChange = onChange
     refresh()
   }
+
+  /// Whether the agent can read the vault list of Obsidian.
+  var canReadVaultList: Bool {
+    false
+  }
+
+  /// Asks the owner once to pick `obsidian.json`, and keeps a bookmark of it.
+  func allowReadingVaultList() {}
 
   /// Runs the folder picker and registers the chosen vault.
   func addVaultFromPicker() {
