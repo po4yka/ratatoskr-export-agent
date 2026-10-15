@@ -9,10 +9,16 @@ extension NotesChannelClient {
     guard !resultsLoaded, let connectionID else {
       return
     }
-    resultsLoaded = true
-    if let saved = try? await resultStore?.load(connectionID: connectionID) {
-      unsentResults.merge(saved) { kept, _ in kept }
+    guard let resultStore else {
+      resultsLoaded = true
+      return
     }
+    // A read error keeps the results in memory, and the next pass loads again.
+    guard let saved = try? await resultStore.load(connectionID: connectionID) else {
+      return
+    }
+    unsentResults.merge(saved) { kept, _ in kept }
+    resultsLoaded = true
   }
 
   /// Keeps `body` for the operation, or forgets it when nil, and saves.
@@ -36,7 +42,8 @@ extension NotesChannelClient {
   /// A failed save loses only the resend after a restart, so it does not
   /// stop a pass.
   private func saveKeptResults() async {
-    guard let resultStore, let connectionID else {
+    // Before a load, a save would replace the results that the file keeps.
+    guard resultsLoaded, let resultStore, let connectionID else {
       return
     }
     try? await resultStore.save(unsentResults, connectionID: connectionID)
@@ -68,8 +75,8 @@ extension NotesChannelClient {
   /// Sends the result. An `applied` result names bytes that notes must have:
   /// on `409` `notes.channel.bytes_missing` the client uploads the file of the
   /// result and sends the result again. A `404`
-  /// `notes.device_operation.not_found` means that the operation ended. A
-  /// `4xx` other than `409`, or bytes that changed before their upload, can
+  /// `notes.device_operation.not_found` means that the operation ended. Bytes
+  /// that changed before their upload, or a `4xx` that no retry can change,
   /// never let notes take the kept result: it is dropped, and the next pass
   /// applies again.
   func report(_ body: Data, of operation: DeviceOperation) async throws {
@@ -89,12 +96,19 @@ extension NotesChannelClient {
           throw NotesChannelError.staleBytes
         }
       default:
-        if (400..<500).contains(answer.status), answer.status != 409 {
+        if Self.dropsKeptResult(status: answer.status, fault: fault) {
           await keep(nil, for: operation.operationID)
         }
         throw NotesFault.error(of: answer)
       }
     }
     throw NotesChannelError.notSettled
+  }
+
+  /// A `4xx` drops the kept result, except `401`, `403`, `408` and `429`
+  /// and a fault that says it is retryable. A `409` other than
+  /// `notes.channel.bytes_missing` drops it too.
+  static func dropsKeptResult(status: Int, fault: NotesFault?) -> Bool {
+    (400..<500).contains(status) && ![401, 403, 408, 429].contains(status) && fault?.retryable != true
   }
 }

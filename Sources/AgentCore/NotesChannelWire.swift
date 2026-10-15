@@ -51,9 +51,11 @@ struct NotesFault: Decodable {
   let code: String
   let committedSequence: UInt64?
   let missingSHA256: [String]?
+  let retryable: Bool?
 
   enum CodingKeys: String, CodingKey {
     case code
+    case retryable
     case committedSequence = "committed_sequence"
     case missingSHA256 = "missing_sha256"
   }

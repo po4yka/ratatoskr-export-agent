@@ -231,17 +231,19 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   checks the base hash of each before the CLI, refuses the whole rename when one differs (naming
   each note with its own hash), and reports the hash of each after the CLI, uploading the bytes that
   notes does not expect. A result that notes does not take with `200` is kept in
-  `device-results.json` of the support directory and sent again on the next pass, also after a
-  restart, without a new apply; a result that notes refuses with a `4xx` other than `409` is
-  dropped, and the next pass applies again. It applies `update` with an atomic write in the vault
-  folder. A path that resolves outside the vault, that has a segment that starts with `.` or ends in
-  `.` or a space, or that holds `\`, `:`, a control character or DEL, is refused with
-  `notes.write.unsafe_path`. Any other local error (for example a folder at the path) fails the
-  operation with `notes.channel.refused`, and the agent goes on with the next one. The agent reads
-  at most the `length_bytes` of the content and one byte, and refuses longer content. A create that
-  finds the empty file of its own earlier `obsidian create` writes the bytes and does not run the
-  CLI again. Each CLI command runs on a thread of its own. Its own changes come back through the
-  watcher, and notes takes them as the acknowledgements of the writes.
+  `device-results.json` of the support directory (mode `0600`, folder `0700`, because it names note
+  paths) and sent again on the next pass, also after a restart, without a new apply. A `4xx` other
+  than `401`, `403`, `408` and `429` that is not retryable drops the result, and the next pass
+  applies again; a file that does not decode moves to `device-results.json.corrupt-<seconds>`. It
+  applies `update` with an atomic write in the vault folder. A path that resolves outside the vault,
+  that has a segment that starts with `.` or ends in `.` or a space, or that holds `\`, `:`, a
+  control character or DEL, is refused with `notes.write.unsafe_path`. Any other local error (for
+  example a folder at the path) fails the operation with `notes.channel.refused`, and the agent goes
+  on with the next one. The agent reads at most the `length_bytes` of the content and one byte, and
+  refuses longer content. A create that finds the empty file of its own earlier `obsidian create`
+  writes the bytes and does not run the CLI again. Each CLI command runs on a thread of its own. Its
+  own changes come back through the watcher, and notes takes them as the acknowledgements of the
+  writes.
 - **Obsidian 1.12.7 or later.** The writes need the Obsidian CLI, which the Obsidian installer 1.12.7
   or later registers (Settings → General → Command line interface). The CLI answers only while the
   app runs, and its first command starts the app. So the agent does not run the CLI while Obsidian
