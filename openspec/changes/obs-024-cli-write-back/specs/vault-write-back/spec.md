@@ -158,3 +158,27 @@ with `notes.channel.refused`.
 
 - **WHEN** the content of an update has 4 bytes and `length_bytes` 3
 - **THEN** the result is `failed` with `notes.channel.refused`, the file does not change, and the read carries the bound 3, verified by `ObsidianCliApplyLocalTests.testContentLongerThanItsLengthIsRefused` and `NotesChannelHTTPTests.testABoundedBodyIsReadUpToItsBoundAndOneByte`
+
+### Requirement: A rename with its link rewrites is one group
+
+For a `rename` or a `move` that lists `rewrites`, the agent SHALL check the path and the base hash of
+each linking note before it runs the CLI. A refused path SHALL fail the group with
+`notes.write.unsafe_path`, and a base mismatch SHALL refuse the group with a top-level `base_mismatch`
+and give the linking note to the change buffer, with nothing changed. After the CLI, the agent SHALL
+report the hash of each linking note in the `rewrites` of the `applied` result, and SHALL upload each
+hash that is not the `expected_sha256` of its note before the result.
+
+#### Scenario: Obsidian rewrites two linking notes
+
+- **WHEN** the queue renames `Projects/Alpha.md` with two linking notes, and one note does not get its expected bytes
+- **THEN** the result lists both notes as `applied` with their hashes, and only that one note is uploaded, before the result, verified by `ObsidianCliRewriteTests.testRenameReportsTheHashOfEachLinkingNote`
+
+#### Scenario: A linking note has a newer local edit
+
+- **WHEN** a linking note does not have its base hash
+- **THEN** the result is `base_mismatch`, no CLI command runs, and the note goes to the change buffer, verified by `ObsidianCliRewriteTests.testARewriteBaseMismatchRefusesTheGroupBeforeTheCLI`
+
+#### Scenario: An unsafe linking note
+
+- **WHEN** a linking note has the path `../Index.md`
+- **THEN** the result is `failed` with `notes.write.unsafe_path`, and no CLI command runs, verified by `ObsidianCliRewriteTests.testAnUnsafeRewritePathFailsTheGroup`

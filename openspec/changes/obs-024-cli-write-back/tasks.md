@@ -44,3 +44,12 @@
 ## 10. Gate
 
 - [x] 10.1 Run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-024-cli-write-back --strict`. A gate run is not a behaviour and cannot start from a failing test.
+
+## 11. A rename with its link rewrites is one group (workspace OBS-024 tasks 12.15 and 12.16)
+
+- [x] 11.1 RED: `Tests/AgentCoreTests/ObsidianCliRewriteTests.swift` `testRenameReportsTheHashOfEachLinkingNote` (the result lists `rewrites` with `applied` and the hash of each linking note after the CLI; only the note whose hash is not its `expected_sha256` is uploaded, before the result), `testARewriteBaseMismatchRefusesTheGroupBeforeTheCLI` (top-level `base_mismatch`, no CLI command, the renamed file stays, the linking note goes to the change buffer) and `testAnUnsafeRewritePathFailsTheGroup` (`failed` `notes.write.unsafe_path`, no CLI command). Confirm that all fail by their assertions.
+- [ ] 11.2 GREEN: decode `rewrites` of a queued rename or move; check the path and the base of each linking note before the CLI; after the CLI, hash each linking note (once more after `settle` when a note still has its base hash), upload each hash that is not its `expected_sha256`, and send `rewrites` in the `applied` result. Verify 11.1 and the full suite. The agent has no plain-move path: a rename or a move always runs the Obsidian CLI, so `notes.write.unsupported` has no case to cover.
+
+## 12. Gate
+
+- [ ] 12.1 Run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-024-cli-write-back --strict`. A gate run is not a behaviour and cannot start from a failing test.
