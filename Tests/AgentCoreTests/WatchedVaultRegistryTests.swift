@@ -1,7 +1,6 @@
 import AgentCore
 import XCTest
 
-@MainActor
 final class WatchedVaultRegistryTests: XCTestCase {
   private var root: URL!
 
@@ -23,6 +22,7 @@ final class WatchedVaultRegistryTests: XCTestCase {
 
   private var file: URL { root.appendingPathComponent("vault-preferences.json") }
 
+  @MainActor
   private func registry(key: String?) throws -> WatchedVaultRegistry {
     try WatchedVaultRegistry(
       store: FileWatchedVaultStore(fileURL: file),
@@ -32,6 +32,7 @@ final class WatchedVaultRegistryTests: XCTestCase {
     )
   }
 
+  @MainActor
   func testAddedVaultHasTheObsidianKeyAndTheFolderNameAndIsSaved() throws {
     let added = try registry(key: "a1b2c3d4e5f60718").addVault(at: root.appendingPathComponent("Work"))
 
@@ -43,6 +44,7 @@ final class WatchedVaultRegistryTests: XCTestCase {
     XCTAssertEqual(reloaded, [added])
   }
 
+  @MainActor
   func testVaultWithoutAnObsidianKeyGetsAGeneratedKeyOnce() throws {
     let registry = try registry(key: nil)
 
@@ -54,6 +56,7 @@ final class WatchedVaultRegistryTests: XCTestCase {
     XCTAssertEqual(registry.vaults.count, 1)
   }
 
+  @MainActor
   func testRemovedVaultIsGoneAfterAReload() throws {
     let registry = try registry(key: "a1b2c3d4e5f60718")
     let added = try registry.addVault(at: root.appendingPathComponent("Work"))

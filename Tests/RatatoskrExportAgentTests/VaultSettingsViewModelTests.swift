@@ -12,11 +12,8 @@ final class VaultSettingsViewModelTests: XCTestCase {
     try FileManager.default.createDirectory(at: root.appendingPathComponent("Notes"), withIntermediateDirectories: true)
   }
 
-  override func tearDown() async throws {
-    try? FileManager.default.removeItem(at: root)
-  }
-
   func testAddFromThePickerShowsTheVaultAndRemoveTakesItAway() throws {
+    defer { try? FileManager.default.removeItem(at: root) }
     let registry = try WatchedVaultRegistry(
       store: FileWatchedVaultStore(fileURL: root.appendingPathComponent("vault-preferences.json")),
       bookmarkStore: SettingsVaultBookmarkStub(),
