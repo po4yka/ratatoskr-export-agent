@@ -99,6 +99,11 @@ public final class WatchedVaultRegistry {
     return vault
   }
 
+  /// The vaults whose folders resolve and can be read, with access begun.
+  public func runtimeVaults() -> [RuntimeVault] {
+    []
+  }
+
   /// Removes a vault and ends the access to its folder.
   public func removeVault(id: UUID) {
     guard let index = vaults.firstIndex(where: { $0.id == id }) else {

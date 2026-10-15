@@ -65,3 +65,8 @@
 
 - [x] 14.1 RED: `Tests/AgentCoreTests/VaultChannelBufferTests.swift` `testChangesOverTheBoundWhileASendWaitsBecomeOneManifest` holds the first change batch, gives 5 more change lists with a bound of 3 changes, releases the batch, and asserts that the next request is one manifest and that no other batch goes. Confirm that it fails by its assertions (every list is queued and sent).
 - [x] 14.2 GREEN: `VaultChannelSync` gathers the drained changes in one buffer of at most `maximumBufferedChanges` (10 000 by default) and gives the client all of them at once; over the bound it clears the buffer and sends one manifest instead (`NotesChannelClient.resync()`). Verify 14.1 and the full suite.
+
+## 15. The app runs the vaults (workspace OBS-023 tasks 12.23 and 12.24)
+
+- [x] 15.1 RED: `Tests/AgentCoreTests/SessionBoundNotesChannelHTTPTests.swift` asserts that an agent that is not paired sends nothing and that each request uses the paired origin of that moment; `Tests/AgentCoreTests/VaultRuntimeComponentTests.swift` asserts that the runtime component launches one sync per vault, stops the sync of a removed vault, launches a new one, and stops all at the end, and that the registry gives each vault with its resolved folder. Confirm that all fail by their assertions (stubs send and run nothing).
+- [ ] 15.2 GREEN: `SessionBoundNotesChannelHTTP`, `VaultRuntimeComponent`, `WatchedVaultRegistry.runtimeVaults()`, and `ProductRuntimeFactory` adds the component, which builds a `VaultChannelSync` per vault with FSEvents, the Obsidian CLI rename check and `FileVaultChannelStateStore` at `vault-channels.json` of the support directory. Verify 15.1 and the full suite.
