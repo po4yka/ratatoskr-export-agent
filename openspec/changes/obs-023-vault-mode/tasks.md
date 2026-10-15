@@ -46,3 +46,7 @@
 
 - [x] 10.1 RED: `Tests/AgentCoreTests/VaultChannelRetryTests.swift` asserts that the retry delay doubles from 5 seconds to at most 5 minutes and that jitter takes off at most half of it, that a failed send is sent again after the backoff (5 s, then 10 s, through an injected sleep) without a new file event, and that a failed start is tried again by the same timer. Confirm that all 3 fail by their assertions (a `VaultChannelRetry` stub gives 0 and the sync does not try again).
 - [x] 10.2 GREEN: `VaultChannelRetry` gives the delay with jitter, and the send task of `VaultChannelSync` tries a failed start or send again after it, until it works, the channel is stopped, or the sync stops. Verify 10.1 and the full suite.
+
+## 11. Gate (after workspace OBS-023 task 12.18)
+
+- [x] 11.1 Run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-023-vault-mode --strict`. A gate run is not a behaviour and cannot start from a failing test. Workspace tasks 12.15 and 12.16 (the vault mode in the app configuration and start) are not done here: no settings surface or runtime component for a vault exists yet.
