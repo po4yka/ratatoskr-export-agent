@@ -28,7 +28,8 @@ public final class VaultChannelSync: @unchecked Sendable {
     vaultDisplayName: String,
     connectionID: String? = nil,
     stateStore: (any VaultChannelStateStoring)? = nil,
-    retry: VaultChannelRetry = VaultChannelRetry()
+    retry: VaultChannelRetry = VaultChannelRetry(),
+    maximumBufferedChanges: Int = 10_000
   ) {
     self.retry = retry
     (changes, continuation) = AsyncStream.makeStream(of: [VaultChange].self)

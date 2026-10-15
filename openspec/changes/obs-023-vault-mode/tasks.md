@@ -60,3 +60,8 @@
 
 - [x] 13.1 RED: `Tests/AgentCoreTests/WatchedVaultRegistryTests.swift` asserts that an added vault has the vault id of Obsidian as its key, the folder name as its display name and its bookmark, and is saved in `vault-preferences.json`; that a vault without a vault id of Obsidian gets a generated key once, and the same folder is one vault; and that a removed vault is gone after a reload. `Tests/RatatoskrExportAgentTests/VaultSettingsViewModelTests.swift` asserts that the settings add a vault from the folder picker, show it by name, and remove it. Confirm that all fail by their assertions (stubs store nothing).
 - [x] 13.2 GREEN: `WatchedVaultRegistry` with `FileWatchedVaultStore`, and `VaultSettingsViewModel` with a vault section in the settings window. Verify 13.1 and the full suite.
+
+## 14. A bounded buffer of changes (workspace OBS-023 tasks 12.21 and 12.22)
+
+- [x] 14.1 RED: `Tests/AgentCoreTests/VaultChannelBufferTests.swift` `testChangesOverTheBoundWhileASendWaitsBecomeOneManifest` holds the first change batch, gives 5 more change lists with a bound of 3 changes, releases the batch, and asserts that the next request is one manifest and that no other batch goes. Confirm that it fails by its assertions (every list is queued and sent).
+- [ ] 14.2 GREEN: `VaultChannelSync` gathers the drained changes in one buffer of at most `maximumBufferedChanges` (10 000 by default) and gives the client all of them at once; over the bound it clears the buffer and sends one manifest instead (`NotesChannelClient.resync()`). Verify 14.1 and the full suite.
