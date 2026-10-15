@@ -24,7 +24,7 @@
 ## 6. More unsafe paths (workspace OBS-024 tasks 12.7 and 12.8)
 
 - [x] 6.1 RED: `Tests/AgentCoreTests/ObsidianCliApplyPathTests.swift` `testBackslashesControlCharactersColonsAndTrailingDotsFailWithUnsafePath` queues updates of `A\.obsidian\plugins\x.md`, `..\x.md`, `A\u{0}.md`, `A\nB.md`, `A\u{7F}.md`, `Notes/.. /x.md`, `Notes/. /x.md`, `A:B.md`, `Notes./x.md` and `Notes /x.md`, and moves of `Notes/A.md` to `Notes\B.md` and `Notes/B:C.md`. It asserts that each is `failed` with `notes.write.unsafe_path`, that only `obsidian version` runs, that no content is read and that nothing is written. Confirm that it fails by its assertions. The search for the nearest existing folder stops at `/`, because a path with NUL never exists and the search did not end.
-- [ ] 6.2 GREEN: refuse a path or a target path that holds `\`, `:`, a C0 control character or DEL, a segment that ends in `.` or a space, or a first segment `.obsidian` in any case, before any read or CLI run. Verify 6.1 and the full suite.
+- [x] 6.2 GREEN: refuse a path or a target path that holds `\`, `:`, a C0 control character or DEL, a segment that ends in `.` or a space, or a first segment `.obsidian` in any case, before any read or CLI run. Verify 6.1 and the full suite.
 
 ## 7. A local error settles the operation (workspace OBS-024 tasks 12.9 and 12.10)
 

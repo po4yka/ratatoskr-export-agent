@@ -3,9 +3,11 @@ import Foundation
 /// The files of one vault that a queued write may touch.
 ///
 /// A path from the queue is relative to the vault root. A path that is
-/// absolute, that has an empty, `.` or `..` segment, or a segment that starts
-/// with `.` (`.obsidian/`, `.trash/`) is refused. A path is also refused when
-/// its nearest existing folder resolves outside the vault through a symbolic
+/// absolute, that has an empty, `.` or `..` segment, a segment that starts
+/// with `.` (`.obsidian/`, `.trash/`) or ends in `.` or a space, or that holds
+/// `\`, `:`, a C0 control character or DEL, is refused (the rule of contract
+/// `write-request.v1` and of the plugin). A path is also refused when its
+/// nearest existing folder resolves outside the vault through a symbolic
 /// link, or when the file itself is a symbolic link.
 struct VaultFileAccess: Sendable {
   let root: URL
@@ -16,8 +18,9 @@ struct VaultFileAccess: Sendable {
 
   /// The URL of `path` inside the vault, or nil when it is refused.
   func url(of path: String) -> URL? {
+    let refused = path.unicodeScalars.contains { $0 == "\\" || $0 == ":" || $0.value < 0x20 || $0.value == 0x7F }
     let segments = path.split(separator: "/", omittingEmptySubsequences: false)
-    guard !segments.isEmpty, segments.allSatisfy({ !$0.isEmpty && !$0.hasPrefix(".") }) else {
+    guard !refused, segments.first?.lowercased() != ".obsidian", segments.allSatisfy(Self.isSafe) else {
       return nil
     }
     let url = root.appendingPathComponent(path)
@@ -31,6 +34,12 @@ struct VaultFileAccess: Sendable {
     }
     let kind = try? FileManager.default.attributesOfItem(atPath: url.path)[.type] as? FileAttributeType
     return kind == .typeSymbolicLink ? nil : url
+  }
+
+  /// A segment is not empty, does not start with `.`, and does not end in
+  /// `.` or a space.
+  private static func isSafe(_ segment: Substring) -> Bool {
+    !segment.isEmpty && !segment.hasPrefix(".") && !segment.hasSuffix(".") && !segment.hasSuffix(" ")
   }
 
   /// The SHA-256 of the file, or nil when there is no file.

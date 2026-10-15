@@ -228,8 +228,9 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   the local file. It applies `create`, `rename`, `move`, `delete` and `set_property` with the
   Obsidian CLI (`obsidian rename` and `obsidian move` update the links, and `obsidian delete` moves
   the file to the trash and never gets `permanent`), and `update` with an atomic write in the vault
-  folder. A path that resolves outside the vault, or that has a segment that starts with `.`, is
-  refused with `notes.write.unsafe_path`. Each CLI command runs on a thread of its own. Its own changes come back through the watcher, and notes takes them as the
+  folder. A path that resolves outside the vault, that has a segment that starts with `.` or ends in
+  `.` or a space, or that holds `\`, `:`, a control character or DEL, is refused with
+  `notes.write.unsafe_path`. Each CLI command runs on a thread of its own. Its own changes come back through the watcher, and notes takes them as the
   acknowledgements of the writes.
 - **Obsidian 1.12.7 or later.** The writes need the Obsidian CLI, which the Obsidian installer 1.12.7
   or later registers (Settings → General → Command line interface). The CLI answers only while the
