@@ -8,7 +8,7 @@ final class ObsidianCliPropertyTests: ObsidianCliTestCase {
     let values = [("status", #""done""#), ("count", "3"), ("done", "true"), ("tags", #"["a","b"]"#)]
     let apply = try fakeObsidian(running: true, cases: "")
     let server = queue(values.map {
-      operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha($0.1), property: ($0.0, "set"))
+      sized(operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha($0.1), property: ($0.0, "set")), $0.1.utf8.count)
     })
     for value in values {
       server.script("/content", status: 200, body: value.1)
@@ -44,7 +44,7 @@ final class ObsidianCliPropertyTests: ObsidianCliTestCase {
     try write("plain", to: "P.md")
     let apply = try fakeObsidian(running: true, cases: "")
     let server = queue(
-      operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha(#""other""#), property: ("status", "set"))
+      sized(operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha(#""other""#), property: ("status", "set")), 6)
     )
     server.script("/content", status: 200, body: #""done""#)
 

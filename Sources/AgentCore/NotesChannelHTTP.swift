@@ -7,12 +7,15 @@ public struct NotesChannelRequest: Equatable, Sendable {
   public let path: String
   public let body: Data?
   public let contentType: String?
+  /// The most bytes of the answer body that the caller takes.
+  public let maximumBodyBytes: Int?
 
-  public init(method: String, path: String, body: Data? = nil, contentType: String? = nil) {
+  public init(method: String, path: String, body: Data? = nil, contentType: String? = nil, maximumBodyBytes: Int? = nil) {
     self.method = method
     self.path = path
     self.body = body
     self.contentType = contentType
+    self.maximumBodyBytes = maximumBodyBytes
   }
 }
 

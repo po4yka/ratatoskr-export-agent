@@ -103,6 +103,12 @@ class ObsidianCliTestCase: XCTestCase {
     return (String(bytes: data, encoding: .utf8) ?? "").replacingOccurrences(of: #""CONTENT""#, with: blob ?? "null")
   }
 
+  /// The operation with `length` as the `length_bytes` of its content (4 by
+  /// default).
+  func sized(_ operation: String, _ length: Int) -> String {
+    operation.replacingOccurrences(of: #""length_bytes":4"#, with: #""length_bytes":\#(length)"#)
+  }
+
   func client(_ server: FakeNotesServer) -> NotesChannelClient {
     NotesChannelClient(
       http: server, vault: vault, vaultKey: "vault-key-1", vaultDisplayName: "Fixture", connectionID: connection,

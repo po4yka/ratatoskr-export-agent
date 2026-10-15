@@ -53,6 +53,24 @@ final class NotesChannelHTTPTests: XCTestCase {
       seen.requests.first?.url?.absoluteString, "https://ratatoskr.example/v1/notes/connections/c1/device-operations?after=7"
     )
   }
+
+  func testABoundedBodyIsReadUpToItsBoundAndOneByte() async throws {
+    ResumableURLProtocol.interceptor = { _ in (200, Data(repeating: 7, count: 100_000)) }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [ResumableURLProtocol.self]
+    let http = PlatformNotesChannelHTTP(
+      origin: URL(string: "https://ratatoskr.example")!,
+      authorizer: ScenarioAuthorizer(),
+      session: URLSession(configuration: configuration)
+    )
+
+    let answer = try await http.perform(
+      NotesChannelRequest(method: "GET", path: "v1/notes/connections/c1/device-operations/o1/content", maximumBodyBytes: 10)
+    )
+
+    XCTAssertEqual(answer.status, 200)
+    XCTAssertEqual(answer.body.count, 11, "the bound and one byte, so the caller sees that the body passes it")
+  }
 }
 
 private final class SeenRequests: @unchecked Sendable {

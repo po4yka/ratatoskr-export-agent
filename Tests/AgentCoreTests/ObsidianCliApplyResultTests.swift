@@ -56,7 +56,7 @@ final class ObsidianCliApplyResultTests: ObsidianCliTestCase {
       try? Data("---\nstatus: done\n---\nplain".utf8).write(to: file)
     }
     let server = queue(
-      operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha(#""done""#), property: ("status", "set"))
+      sized(operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha(#""done""#), property: ("status", "set")), 6)
     )
     server.script("/content", status: 200, body: #""done""#)
 

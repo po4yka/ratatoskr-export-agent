@@ -38,7 +38,7 @@
 
 ## 9. An unfinished create and the content bound (workspace OBS-024 tasks 12.13 and 12.14)
 
-- [ ] 9.1 RED: `ObsidianCliApplyLocalTests` `testAnEmptyFileOfAnUnfinishedCreateIsFinished` (a create with no base finds an empty file at its path; the agent writes the bytes without `obsidian create` and reports applied) and `testContentLongerThanItsLengthIsRefused` (`failed` with `notes.channel.refused`, nothing written), and `Tests/AgentCoreTests/NotesChannelHTTPTests.swift` `testABoundedBodyIsReadUpToItsBoundAndOneByte`. Confirm that all fail by their assertions.
+- [x] 9.1 RED: `ObsidianCliApplyLocalTests` `testAnEmptyFileOfAnUnfinishedCreateIsFinished` (a create with no base finds an empty file at its path; the agent writes the bytes without `obsidian create` and reports applied) and `testContentLongerThanItsLengthIsRefused` (`failed` with `notes.channel.refused`, nothing written), and `Tests/AgentCoreTests/NotesChannelHTTPTests.swift` `testABoundedBodyIsReadUpToItsBoundAndOneByte`. Confirm that all fail by their assertions.
 - [ ] 9.2 GREEN: a create with no base whose file is empty finishes the write; the content read sends `length_bytes` as the bound of the body, the HTTPS binding reads at most the bound and one byte, and content longer than `length_bytes` is refused. Verify 9.1 and the full suite.
 
 ## 10. Gate

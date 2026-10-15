@@ -136,3 +136,25 @@ with the value and its type (`number`, `checkbox` or `list`; none for a string),
 
 - **WHEN** the content of a `set_property` does not have the hash of its digest
 - **THEN** the result is `failed` with `notes.channel.refused` and no CLI command runs for it, verified by `ObsidianCliPropertyTests.testSetPropertyContentIsCheckedAgainstItsDigest`
+
+### Requirement: An unfinished create is finished
+
+When a `create` with no base finds an empty file at its path, the agent SHALL take it as the file of
+its own earlier `obsidian create`, SHALL write the bytes without running the CLI again, and SHALL
+report `applied` with their hash.
+
+#### Scenario: The write after `obsidian create` did not happen
+
+- **WHEN** a create of `New/Note.md` finds an empty `New/Note.md`
+- **THEN** the file has the bytes, no CLI command runs for it, and the result is `applied`, verified by `ObsidianCliApplyLocalTests.testAnEmptyFileOfAnUnfinishedCreateIsFinished`
+
+### Requirement: The content read is bounded by its length
+
+The agent SHALL read the content with `length_bytes` as the bound, the HTTPS binding SHALL read at
+most the bound and one byte, and content longer than `length_bytes` SHALL make the operation `failed`
+with `notes.channel.refused`.
+
+#### Scenario: Content longer than its length
+
+- **WHEN** the content of an update has 4 bytes and `length_bytes` 3
+- **THEN** the result is `failed` with `notes.channel.refused`, the file does not change, and the read carries the bound 3, verified by `ObsidianCliApplyLocalTests.testContentLongerThanItsLengthIsRefused` and `NotesChannelHTTPTests.testABoundedBodyIsReadUpToItsBoundAndOneByte`
