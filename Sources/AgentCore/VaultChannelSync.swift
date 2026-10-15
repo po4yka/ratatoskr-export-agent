@@ -25,7 +25,8 @@ public final class VaultChannelSync: @unchecked Sendable {
     vaultKey: String,
     vaultDisplayName: String,
     connectionID: String? = nil,
-    stateStore: (any VaultChannelStateStoring)? = nil
+    stateStore: (any VaultChannelStateStoring)? = nil,
+    retry: VaultChannelRetry = VaultChannelRetry(sleep: { _ in })
   ) {
     (changes, continuation) = AsyncStream.makeStream(of: [VaultChange].self)
     let continuation = continuation
