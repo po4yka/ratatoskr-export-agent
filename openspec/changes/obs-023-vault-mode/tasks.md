@@ -55,3 +55,8 @@
 
 - [x] 12.1 RED: `Tests/AgentCoreTests/ObsidianVaultKeyTests.swift` reads a fixture `obsidian.json` in a temporary directory and asserts that the key of a vault is its vault id of Obsidian (the `app.appId` that the plugin sends as `vault_key`), also for a path with a trailing slash and for a linked path, and that an unknown vault, a missing file and an invalid file give no key. Confirm that the first two fail by their assertions (a stub gives no key); the third passes before the change, because the stub gives no key for every input.
 - [x] 12.2 GREEN: `ObsidianVaultKey.key(forVault:config:)` finds the entry of `vaults` in `obsidian.json` whose `path` is the vault path after both resolve their links. Verify 12.1 and the full suite.
+
+## 13. Vault registry and settings (workspace OBS-023 tasks 12.19 and 12.20)
+
+- [x] 13.1 RED: `Tests/AgentCoreTests/WatchedVaultRegistryTests.swift` asserts that an added vault has the vault id of Obsidian as its key, the folder name as its display name and its bookmark, and is saved in `vault-preferences.json`; that a vault without a vault id of Obsidian gets a generated key once, and the same folder is one vault; and that a removed vault is gone after a reload. `Tests/RatatoskrExportAgentTests/VaultSettingsViewModelTests.swift` asserts that the settings add a vault from the folder picker, show it by name, and remove it. Confirm that all fail by their assertions (stubs store nothing).
+- [ ] 13.2 GREEN: `WatchedVaultRegistry` with `FileWatchedVaultStore`, and `VaultSettingsViewModel` with a vault section in the settings window. Verify 13.1 and the full suite.
