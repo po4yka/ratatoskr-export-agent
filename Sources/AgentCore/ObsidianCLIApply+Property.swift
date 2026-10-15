@@ -4,8 +4,9 @@ extension ObsidianCLIApply {
   static let invalidProperty = "export_agent.write.invalid_property"
 
   /// `property_change` `set` runs `obsidian property:set` with the JSON value
-  /// that the content of the operation holds; `remove` runs
-  /// `obsidian property:remove`. Nil when the CLI applied the change.
+  /// that the content of the operation holds, after the digest check;
+  /// `remove` runs `obsidian property:remove`. Nil when the CLI applied the
+  /// change.
   func setProperty(_ operation: DeviceOperation, content: @Sendable () async throws -> Data) async throws -> DeviceOperationOutcome? {
     guard let key = operation.propertyKey, !key.isEmpty else {
       return .failed(code: Self.invalidProperty)
@@ -14,7 +15,7 @@ extension ObsidianCLIApply {
     case "remove":
       return await run(["property:remove", "name=\(key)", "path=\(operation.path)"])
     case "set":
-      guard let value = Self.cliValue(of: try await content()) else {
+      guard let value = Self.cliValue(of: try verified(try await content(), operation)) else {
         return .failed(code: Self.invalidProperty)
       }
       let type = value.type.map { ["type=\($0)"] } ?? []

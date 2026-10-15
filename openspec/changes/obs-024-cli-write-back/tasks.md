@@ -34,7 +34,7 @@
 ## 8. Base mismatch, update and `set_property` (workspace OBS-024 tasks 12.11 and 12.12)
 
 - [x] 8.1 RED: `ObsidianCliApplyLocalTests` `testBaseMismatchChangesNothingAndSendsTheLocalFile` and `testUpdateWritesTheBytesAtomicallyAfterABaseMatch`, and `Tests/AgentCoreTests/ObsidianCliPropertyTests.swift` `testSetPassesTheValueAndItsType`, `testRemovePassesTheName` and `testSetPropertyContentIsCheckedAgainstItsDigest`. Confirm that the digest test fails by its assertions (the CLI runs with content whose hash is not the digest); the other four pin behaviour that exists, each with a mutation that makes it fail.
-- [ ] 8.2 GREEN: the content of `set_property` goes through the digest check. Verify 8.1 and the full suite.
+- [x] 8.2 GREEN: the content of `set_property` goes through the digest check. Verify 8.1 and the full suite.
 
 ## 9. An unfinished create and the content bound (workspace OBS-024 tasks 12.13 and 12.14)
 
