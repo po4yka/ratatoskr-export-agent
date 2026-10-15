@@ -7,6 +7,7 @@ struct ProductRuntimeGraph: Sendable {
   let journal: LocalArchiveJournal
   let session: DeviceSessionCoordinator
   @MainActor let registry: WatchedFolderRegistry
+  @MainActor let vaultRegistry: WatchedVaultRegistry
   let watcher: InboxWatchCoordinator
   let processor: ArchiveCandidateProcessor
 
@@ -33,6 +34,7 @@ enum ProductRuntimeFactory {
     let session = try await restoredSession(support: support, configuration: configuration)
     let journal = try LocalArchiveJournal.open(at: support.appending(path: "archive-journal.jsonl"))
     let registry = try makeRegistry(support: support)
+    let vaultRegistry = try makeVaultRegistry(support: support)
     let folders = registry.runtimeFolders()
     let (watcher, processor) = makeWatcher(
       support: support, configuration: configuration, journal: journal, folders: folders
@@ -51,7 +53,7 @@ enum ProductRuntimeFactory {
     ])
     return ProductRuntimeGraph(
       runtime: runtime, queue: queue, journal: journal, session: session,
-      registry: registry, watcher: watcher, processor: processor
+      registry: registry, vaultRegistry: vaultRegistry, watcher: watcher, processor: processor
     )
   }
 

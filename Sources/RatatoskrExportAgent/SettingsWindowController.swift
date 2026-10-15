@@ -7,16 +7,23 @@ import SwiftUI
 final class SettingsWindowController: NSWindowController {
   private let viewModel: FolderSettingsViewModel
   private let pairingViewModel: PairingOnboardingViewModel
+  private let vaultViewModel: VaultSettingsViewModel
 
   init(
     registry: WatchedFolderRegistry,
+    vaultRegistry: WatchedVaultRegistry,
     session: DeviceSessionCoordinator,
     onFoldersChanged: @escaping () -> Void = {}
   ) {
     viewModel = FolderSettingsViewModel(registry: registry, onChange: onFoldersChanged)
     pairingViewModel = PairingOnboardingViewModel(session: session)
+    vaultViewModel = VaultSettingsViewModel(
+      registry: vaultRegistry,
+      picker: OpenPanelFolderPicker(message: "Choose the folder of an Obsidian vault to send to Ratatoskr Notes."),
+      onChange: onFoldersChanged
+    )
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 620, height: 680),
+      contentRect: NSRect(x: 0, y: 0, width: 620, height: 820),
       styleMask: [.titled, .closable],
       backing: .buffered,
       defer: false
@@ -24,7 +31,7 @@ final class SettingsWindowController: NSWindowController {
     window.title = "Ratatoskr Settings"
     window.contentView = NSHostingView(
       rootView: SettingsRootView(
-        pairing: pairingViewModel, folders: viewModel
+        pairing: pairingViewModel, folders: viewModel, vaults: vaultViewModel
       ))
     super.init(window: window)
   }

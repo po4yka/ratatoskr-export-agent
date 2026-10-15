@@ -21,11 +21,30 @@ final class VaultSettingsViewModel: ObservableObject {
     self.registry = registry
     self.picker = picker
     self.onChange = onChange
+    refresh()
   }
 
   /// Runs the folder picker and registers the chosen vault.
-  func addVaultFromPicker() {}
+  func addVaultFromPicker() {
+    guard let url = picker.pickFolder() else { return }
+    do {
+      try registry.addVault(at: url)
+      changeFailure = nil
+      onChange()
+    } catch {
+      changeFailure = "The vault could not be added."
+    }
+    refresh()
+  }
 
-  /// Removes a vault.
-  func remove(id: UUID) {}
+  /// Removes a vault. Its notes connection stays until the owner removes it.
+  func remove(id: UUID) {
+    registry.removeVault(id: id)
+    onChange()
+    refresh()
+  }
+
+  private func refresh() {
+    rows = registry.vaults.map { VaultRow(id: $0.id, displayName: $0.displayName) }
+  }
 }

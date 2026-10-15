@@ -1,6 +1,7 @@
 import AgentCore
 import XCTest
 
+@MainActor
 final class WatchedVaultRegistryTests: XCTestCase {
   private var root: URL!
 

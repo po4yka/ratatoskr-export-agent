@@ -10,13 +10,15 @@ protocol FolderPicking {
 /// The production folder picker backed by NSOpenPanel.
 @MainActor
 struct OpenPanelFolderPicker: FolderPicking {
+  var message = "Choose a folder to watch for provider export archives."
+
   func pickFolder() -> URL? {
     let panel = NSOpenPanel()
     panel.canChooseDirectories = true
     panel.canChooseFiles = false
     panel.allowsMultipleSelection = false
     panel.canCreateDirectories = true
-    panel.message = "Choose a folder to watch for provider export archives."
+    panel.message = message
     guard panel.runModal() == .OK else { return nil }
     return panel.url
   }

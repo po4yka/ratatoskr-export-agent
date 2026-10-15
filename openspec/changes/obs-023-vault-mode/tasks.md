@@ -59,4 +59,4 @@
 ## 13. Vault registry and settings (workspace OBS-023 tasks 12.19 and 12.20)
 
 - [x] 13.1 RED: `Tests/AgentCoreTests/WatchedVaultRegistryTests.swift` asserts that an added vault has the vault id of Obsidian as its key, the folder name as its display name and its bookmark, and is saved in `vault-preferences.json`; that a vault without a vault id of Obsidian gets a generated key once, and the same folder is one vault; and that a removed vault is gone after a reload. `Tests/RatatoskrExportAgentTests/VaultSettingsViewModelTests.swift` asserts that the settings add a vault from the folder picker, show it by name, and remove it. Confirm that all fail by their assertions (stubs store nothing).
-- [ ] 13.2 GREEN: `WatchedVaultRegistry` with `FileWatchedVaultStore`, and `VaultSettingsViewModel` with a vault section in the settings window. Verify 13.1 and the full suite.
+- [x] 13.2 GREEN: `WatchedVaultRegistry` with `FileWatchedVaultStore`, and `VaultSettingsViewModel` with a vault section in the settings window. Verify 13.1 and the full suite.

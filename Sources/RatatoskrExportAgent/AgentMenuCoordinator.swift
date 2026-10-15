@@ -43,6 +43,7 @@ final class AgentMenuCoordinator: NSObject {
       }
       settingsWindowController = SettingsWindowController(
         registry: graph.registry,
+        vaultRegistry: graph.vaultRegistry,
         session: graph.session,
         onFoldersChanged: { [weak self] in self?.refreshFolders() }
       )

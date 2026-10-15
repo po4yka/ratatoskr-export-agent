@@ -37,28 +37,81 @@ public struct FileWatchedVaultStore: WatchedVaultStoring {
     self.fileURL = fileURL
   }
 
-  public func load() throws -> [WatchedVault] { [] }
+  public func load() throws -> [WatchedVault] {
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+      return []
+    }
+    return try JSONDecoder().decode(WatchedVaultDocument.self, from: Data(contentsOf: fileURL)).vaults
+  }
 
-  public func save(_ vaults: [WatchedVault]) throws {}
+  public func save(_ vaults: [WatchedVault]) throws {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try encoder.encode(WatchedVaultDocument(vaults: vaults)).write(to: fileURL, options: .atomic)
+  }
 }
 
-/// The vaults that the agent watches for the `cli` channel.
+private struct WatchedVaultDocument: Codable {
+  var vaults: [WatchedVault]
+}
+
+/// The vaults that the agent watches for the `cli` channel. The key of a
+/// vault is its vault id of Obsidian, as the plugin sends it; when the agent
+/// cannot read it (no `obsidian.json` entry, or a sandbox without access),
+/// the registry generates a key once and keeps it.
+@MainActor
 public final class WatchedVaultRegistry {
-  public private(set) var vaults: [WatchedVault] = []
+  public private(set) var vaults: [WatchedVault]
+  private let store: any WatchedVaultStoring
+  private let bookmarkStore: any FolderBookmarkStoring
+  private let vaultKey: (URL) -> String?
+  private let newKey: () -> String
 
   public init(
     store: any WatchedVaultStoring,
     bookmarkStore: any FolderBookmarkStoring,
     vaultKey: @escaping (URL) -> String? = { ObsidianVaultKey.key(forVault: $0, config: ObsidianVaultKey.userConfig) },
     newKey: @escaping () -> String = { UUID().uuidString.lowercased() }
-  ) throws {}
+  ) throws {
+    self.store = store
+    self.bookmarkStore = bookmarkStore
+    self.vaultKey = vaultKey
+    self.newKey = newKey
+    vaults = try store.load()
+  }
 
-  /// Adds a picked vault folder. The same folder is one vault.
+  /// Adds a picked vault folder. The same folder, or a folder with the key of
+  /// a known vault, is that vault.
   @discardableResult
   public func addVault(at url: URL) throws -> WatchedVault {
-    WatchedVault(id: UUID(), displayName: "", vaultKey: "", bookmarkData: Data())
+    let key = vaultKey(url)
+    let path = url.resolvingSymlinksInPath().standardizedFileURL.path
+    if let known = vaults.first(where: { $0.vaultKey == key || folderPath(of: $0) == path }) {
+      return known
+    }
+    let bookmarkData = try bookmarkStore.makeBookmarkData(for: url)
+    let vault = WatchedVault(
+      id: UUID(), displayName: url.standardizedFileURL.lastPathComponent, vaultKey: key ?? newKey(), bookmarkData: bookmarkData
+    )
+    try store.save(vaults + [vault])
+    vaults.append(vault)
+    return vault
   }
 
   /// Removes a vault and ends the access to its folder.
-  public func removeVault(id: UUID) {}
+  public func removeVault(id: UUID) {
+    guard let index = vaults.firstIndex(where: { $0.id == id }) else {
+      return
+    }
+    let vault = vaults.remove(at: index)
+    if let resolved = try? bookmarkStore.resolvedFolder(from: vault.bookmarkData) {
+      bookmarkStore.stopAccessing(resolved)
+    }
+    try? store.save(vaults)
+  }
+
+  private func folderPath(of vault: WatchedVault) -> String? {
+    (try? bookmarkStore.resolvedFolder(from: vault.bookmarkData))?.url.resolvingSymlinksInPath().standardizedFileURL.path
+  }
 }
