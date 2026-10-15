@@ -42,3 +42,19 @@ not react to its own changes, so nothing loops.
 
 A base mismatch gives the local file to the change buffer of the vault, so the one send task of the
 sync sends it.
+
+### Unsafe paths
+
+A refused path is reported as `failed` with `notes.write.unsafe_path`, before the agent reads the
+content or runs the CLI.
+
+### The hash after `property:set`
+
+Obsidian can write the frontmatter after the CLI returned. When the file still has the base hash after
+`property:set` or `property:remove`, the agent waits once (0.5 s) and reads the hash again.
+
+### The CLI thread
+
+The CLI runner blocks until the process ends, for up to 30 seconds. Each run is on a dedicated
+thread named `obsidian-cli`, and the pass awaits it through a continuation, so no thread of the
+cooperative pool waits for Obsidian.

@@ -14,7 +14,7 @@ public struct ObsidianCLIApply: Sendable {
   public static let bundleIdentifier = "md.obsidian"
 
   enum Code {
-    static let outsideVault = "export_agent.write.path_outside_vault"
+    static let unsafePath = "notes.write.unsafe_path"
     static let targetExists = "export_agent.write.target_exists"
     static let cliFailed = "export_agent.write.obsidian_failed"
     static let unsupported = "export_agent.write.unsupported_operation"
@@ -28,7 +28,7 @@ public struct ObsidianCLIApply: Sendable {
 
   public init(
     vault: URL, vaultName: String, runner: any ObsidianCLIRunning, obsidianRunning: @escaping @Sendable () -> Bool,
-    settle: @escaping @Sendable () async -> Void = {}
+    settle: @escaping @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 500_000_000) }
   ) {
     files = VaultFileAccess(root: vault)
     self.vaultName = vaultName
@@ -37,18 +37,31 @@ public struct ObsidianCLIApply: Sendable {
     self.settle = settle
   }
 
+  /// The name of the thread of each CLI run.
+  static let threadName = "obsidian-cli"
+
   /// Whether the app runs and its CLI answers `obsidian version`.
-  func isAvailable() -> Bool {
-    guard obsidianRunning(), let answer = runner.run(["version"]) else {
+  func isAvailable() async -> Bool {
+    guard obsidianRunning(), let answer = await cli(["version"]) else {
       return false
     }
     return answer.status == 0
   }
 
+  /// Runs the CLI on a thread of its own, so a run of up to 30 seconds
+  /// holds no thread of the cooperative pool.
+  private func cli(_ arguments: [String]) async -> ObsidianCLIAnswer? {
+    await withCheckedContinuation { [runner] continuation in
+      let thread = Thread { continuation.resume(returning: runner.run(arguments)) }
+      thread.name = Self.threadName
+      thread.start()
+    }
+  }
+
   /// Applies one operation. `content` reads its bytes from notes.
   func apply(_ operation: DeviceOperation, content: @Sendable () async throws -> Data) async throws -> DeviceOperationOutcome {
     guard let source = files.url(of: operation.path), let target = files.url(of: operation.resultPath) else {
-      return .failed(code: Code.outsideVault)
+      return .failed(code: Code.unsafePath)
     }
     let local = try files.sha256(at: source)
     if let done = try alreadyApplied(operation, local: local, target: target) {
@@ -60,7 +73,19 @@ public struct ObsidianCLIApply: Sendable {
     if let refused = try await change(operation, source: source, target: target, content: content) {
       return refused
     }
-    return .applied(sha256: try files.sha256(at: target))
+    return .applied(sha256: try await resultHash(operation, at: target))
+  }
+
+  /// The hash of the file after the operation. Obsidian can write the
+  /// frontmatter of a `set_property` after the CLI returned, so a file that
+  /// still has the base hash is read once more after `settle`.
+  private func resultHash(_ operation: DeviceOperation, at target: URL) async throws -> String? {
+    let hash = try files.sha256(at: target)
+    guard operation.kind == "set_property", hash == operation.baseHash else {
+      return hash
+    }
+    await settle()
+    return try files.sha256(at: target)
   }
 
   /// Makes the change of the operation. Nil when the vault has it.
@@ -73,15 +98,15 @@ public struct ObsidianCLIApply: Sendable {
       return nil
     case "create":
       let bytes = try await verified(content(), operation)
-      if let refused = run(["create", "path=\(operation.path)"], expecting: { FileManager.default.fileExists(atPath: source.path) }) {
+      if let refused = await run(["create", "path=\(operation.path)"], expecting: { FileManager.default.fileExists(atPath: source.path) }) {
         return refused
       }
       try files.write(bytes, to: source)
       return nil
     case "rename", "move":
-      return move(operation, from: source, to: target)
+      return await move(operation, from: source, to: target)
     case "delete":
-      return run(["delete", "path=\(operation.path)"]) { !FileManager.default.fileExists(atPath: source.path) }
+      return await run(["delete", "path=\(operation.path)"]) { !FileManager.default.fileExists(atPath: source.path) }
     case "set_property":
       return try await setProperty(operation, content: content)
     default:
@@ -109,7 +134,7 @@ public struct ObsidianCLIApply: Sendable {
 
   /// A rename that keeps the folder and the extension is `obsidian rename`;
   /// every other rename and move is `obsidian move`. Both update the links.
-  private func move(_ operation: DeviceOperation, from source: URL, to target: URL) -> DeviceOperationOutcome? {
+  private func move(_ operation: DeviceOperation, from source: URL, to target: URL) async -> DeviceOperationOutcome? {
     guard !FileManager.default.fileExists(atPath: target.path) else {
       return .failed(code: Code.targetExists)
     }
@@ -118,15 +143,15 @@ public struct ObsidianCLIApply: Sendable {
       operation.kind == "rename" && sameFolder && source.pathExtension == target.pathExtension
       ? ["rename", "path=\(operation.path)", "name=\(target.deletingPathExtension().lastPathComponent)"]
       : ["move", "path=\(operation.path)", "to=\(operation.resultPath)"]
-    return run(arguments) {
+    return await run(arguments) {
       FileManager.default.fileExists(atPath: target.path) && !FileManager.default.fileExists(atPath: source.path)
     }
   }
 
   /// Runs one CLI command on the vault. Nil when the command ran and the disk
   /// shows its effect; `awaitingObsidian` when the CLI gave no answer.
-  func run(_ command: [String], expecting effect: () -> Bool = { true }) -> DeviceOperationOutcome? {
-    guard let answer = runner.run(["vault=\(vaultName)"] + command) else {
+  func run(_ command: [String], expecting effect: () -> Bool = { true }) async -> DeviceOperationOutcome? {
+    guard let answer = await cli(["vault=\(vaultName)"] + command) else {
       return .awaitingObsidian
     }
     guard answer.status == 0, !answer.output.hasPrefix("Error"), effect() else {

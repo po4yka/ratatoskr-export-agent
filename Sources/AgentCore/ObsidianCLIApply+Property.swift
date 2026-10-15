@@ -12,13 +12,13 @@ extension ObsidianCLIApply {
     }
     switch operation.propertyChange {
     case "remove":
-      return run(["property:remove", "name=\(key)", "path=\(operation.path)"])
+      return await run(["property:remove", "name=\(key)", "path=\(operation.path)"])
     case "set":
       guard let value = Self.cliValue(of: try await content()) else {
         return .failed(code: Self.invalidProperty)
       }
       let type = value.type.map { ["type=\($0)"] } ?? []
-      return run(["property:set", "name=\(key)", "value=\(value.text)"] + type + ["path=\(operation.path)"])
+      return await run(["property:set", "name=\(key)", "value=\(value.text)"] + type + ["path=\(operation.path)"])
     default:
       return .failed(code: Self.invalidProperty)
     }

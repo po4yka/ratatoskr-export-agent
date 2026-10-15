@@ -26,7 +26,7 @@ extension NotesChannelClient {
     while true {
       let page = try await queuePage(after: cursor)
       // The CLI is asked once per pass, and only when an operation waits.
-      if cursor == nil, !page.operations.isEmpty, !apply.isAvailable() {
+      if cursor == nil, !page.operations.isEmpty, !(await apply.isAvailable()) {
         return .awaitingObsidian
       }
       for operation in page.operations {
