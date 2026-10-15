@@ -79,3 +79,8 @@
 ## 17. Documentation and gate (after workspace OBS-023 task 12.26)
 
 - [x] 17.1 Describe the vault mode in README.md and the proposal, and run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-023-vault-mode --strict`. Documentation and a gate run are not behaviours and cannot start from a failing test.
+
+## 18. Review follow-ups (workspace OBS-023 tasks 12.27 to 12.36)
+
+- [x] 18.1 RED: `Tests/AgentCoreTests/VaultChannelLaunchTests.swift` asserts that a launch after `stop()` neither watches the vault nor connects, and that a `stop()` before the launch task runs leaves no watcher running. Confirm that both fail by their assertions.
+- [ ] 18.2 GREEN: a stopped `VaultChannelSync` does not start, and a start that a stop overtakes stops what it started. Verify 18.1 and the full suite.
