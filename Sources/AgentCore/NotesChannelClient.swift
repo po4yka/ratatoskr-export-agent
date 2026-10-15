@@ -129,17 +129,23 @@ public actor NotesChannelClient {
 
   private func checkNotStopped() throws {
     if case .stopped(let code) = status {
-      throw code == NotesFault.removed ? NotesChannelError.connectionRemoved : NotesChannelError.channelMismatch
+      switch code {
+      case NotesFault.removed: throw NotesChannelError.connectionRemoved
+      case NotesFault.channelMismatch: throw NotesChannelError.channelMismatch
+      default: throw NotesChannelError.permanent(code: code)
+      }
     }
   }
 
   /// A refusal that no retry can change stops the channel: another device or
-  /// channel owns the vault, or the owner removed the connection.
+  /// channel owns the vault, the owner removed the connection, or an answer
+  /// is `permanent` (the code names the cause).
   private func stopOnRefusal(_ error: any Error) -> any Error {
     let code: String
     switch error {
     case NotesChannelError.channelMismatch: code = NotesFault.channelMismatch
     case NotesChannelError.connectionRemoved: code = NotesFault.removed
+    case NotesChannelError.permanent(let cause): code = cause
     default: return error
     }
     status = .stopped(code: code)

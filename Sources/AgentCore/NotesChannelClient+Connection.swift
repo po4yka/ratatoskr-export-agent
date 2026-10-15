@@ -73,10 +73,16 @@ extension NotesChannelClient {
 
   func sendManifest() async throws {
     let manifest = await manifest()
+    guard manifest.entries.count <= NotesFault.maximumManifestEntries else {
+      throw NotesChannelError.permanent(code: NotesFault.manifestTooLarge)
+    }
     let body = try manifest.encoded()
     let files = manifest.entries.map { NotesBlobFile(path: $0.path, sha256: $0.sha256, lengthBytes: $0.lengthBytes) }
     for _ in 0..<3 {
       let answer = try await perform("POST", "manifest", body: body)
+      guard answer.status != 413 else {
+        throw NotesChannelError.permanent(code: NotesFault.manifestTooLarge)
+      }
       guard answer.status == 200 else {
         throw NotesFault.error(of: answer)
       }

@@ -63,6 +63,12 @@ struct NotesFault: Decodable {
   static let channelMismatch = "notes.channel_mismatch"
   static let sequenceGap = "notes.channel.sequence_gap"
   static let bytesMissing = "notes.channel.bytes_missing"
+  static let vaultAlreadyConnected = "notes.connection.vault_already_connected"
+  static let invalidRequest = "notes.request.invalid"
+  /// The cause of a stop that the agent names itself: notes takes at most
+  /// 100 000 manifest entries and 32 MiB of manifest body.
+  static let manifestTooLarge = "export_agent.manifest_too_large"
+  static let maximumManifestEntries = 100_000
 
   static func of(_ answer: NotesChannelAnswer) -> NotesFault? {
     try? JSONDecoder().decode(NotesFault.self, from: answer.body)
@@ -74,6 +80,7 @@ struct NotesFault: Decodable {
     switch (answer.status, code) {
     case (404, notFound): return .connectionGone
     case (410, removed): return .connectionRemoved
+    case (409, vaultAlreadyConnected), (400, invalidRequest): return .permanent(code: code ?? "")
     case (409, channelMismatch): return .channelMismatch
     default: return .refused(status: answer.status, code: code)
     }
