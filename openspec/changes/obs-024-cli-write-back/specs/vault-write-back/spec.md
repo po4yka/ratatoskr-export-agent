@@ -174,9 +174,24 @@ SHALL upload first each hash that is not the `expected_sha256` of its note.
 #### Scenario: A linking note has a newer local edit
 
 - **WHEN** a linking note does not have its base hash
-- **THEN** the result is `base_mismatch`, no CLI command runs, and the note goes to the change buffer, verified by `ObsidianCliRewriteTests.testARewriteBaseMismatchRefusesTheGroupBeforeTheCLI`
+- **THEN** the result is `base_mismatch` with the hash of the renamed file and a `base_mismatch` entry with its own hash for every listed linking note, no CLI command runs, and the notes that differ go to the change buffer, verified by `ObsidianCliRewriteTests.testARewriteBaseMismatchRefusesTheGroupBeforeTheCLI`
 
 #### Scenario: An unsafe linking note
 
 - **WHEN** a linking note has the path `../Index.md`
 - **THEN** the result is `failed` with `notes.write.unsafe_path`, and no CLI command runs, verified by `ObsidianCliRewriteTests.testAnUnsafeRewritePathFailsTheGroup`
+
+### Requirement: A result is sent again until notes takes it
+
+The agent SHALL keep each result that did not get `200` (or `404` `notes.device_operation.not_found`)
+and SHALL send the same result again on the next pass, without a new apply.
+
+#### Scenario: A server error on the result
+
+- **WHEN** notes answers `503` to the result of a `set_property`
+- **THEN** the next pass sends the same `applied` result, and the property is set once, verified by `ObsidianCliResendTests.testAResultIsSentAgainAfterAServerError`
+
+#### Scenario: A network error on the result
+
+- **WHEN** the result of a rename meets a network error
+- **THEN** the next pass reports the rename as `applied`, and the file is renamed once, verified by `ObsidianCliResendTests.testAResultIsSentAgainAfterANetworkError`

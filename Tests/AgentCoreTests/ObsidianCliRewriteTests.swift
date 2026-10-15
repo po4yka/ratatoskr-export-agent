@@ -48,20 +48,36 @@ final class ObsidianCliRewriteTests: ObsidianCliTestCase {
   func testARewriteBaseMismatchRefusesTheGroupBeforeTheCLI() async throws {
     try write("alpha", to: "Projects/Alpha.md")
     try write("[[Alpha]] and a newer edit", to: "Index.md")
+    try write("see [[Alpha]]", to: "Other.md")
     let apply = try fakeObsidian(running: true, cases: "rename) \(String(format: renamed, vault.path, vault.path)) ;;")
     let server = queue(grouped(
       operation(kind: "rename", path: "Projects/Alpha.md", target: "Projects/Apollo.md", base: sha("alpha")),
-      [LinkingNote(path: "Index.md", base: sha("[[Alpha]]"), expected: sha("[[Apollo]]"))]
+      [
+        LinkingNote(path: "Index.md", base: sha("[[Alpha]]"), expected: sha("[[Apollo]]")),
+        LinkingNote(path: "Other.md", base: sha("see [[Alpha]]"), expected: sha("see [[Apollo]]")),
+        LinkingNote(path: "Gone.md", base: sha("[[Alpha]]"), expected: sha("[[Apollo]]")),
+      ]
     ))
     let sent = RewriteChanges()
 
     let pass = try await client(server).applyQueuedOperations(apply) { sent.add($0) }
 
     XCTAssertEqual(pass, .answered(1))
-    XCTAssertEqual(groupResults(server).first as? NSDictionary, ["outcome": "base_mismatch"] as NSDictionary)
+    XCTAssertEqual(
+      groupResults(server).first as? NSDictionary,
+      [
+        "outcome": "base_mismatch", "local_sha256": sha("alpha"),
+        "rewrites": [
+          ["outcome": "base_mismatch", "path": "Index.md", "local_sha256": sha("[[Alpha]] and a newer edit")],
+          ["outcome": "base_mismatch", "path": "Other.md", "local_sha256": sha("see [[Alpha]]")],
+          ["outcome": "base_mismatch", "path": "Gone.md", "local_sha256": NSNull()],
+        ],
+      ] as NSDictionary,
+      "every linking note with its own hash, and never an applied entry"
+    )
     XCTAssertEqual(try invocations(), [["version"]], "nothing of the group is changed")
     XCTAssertEqual(read("Projects/Alpha.md"), "alpha")
-    XCTAssertEqual(sent.changes.map(\.path), ["Index.md"], "the newer linking note goes to the change buffer")
+    XCTAssertEqual(sent.changes.map(\.path), ["Index.md", "Gone.md"], "the linking notes that differ go to the change buffer")
   }
 
   func testAnUnsafeRewritePathFailsTheGroup() async throws {
