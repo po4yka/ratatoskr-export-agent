@@ -35,7 +35,11 @@ public actor FileVaultChannelStateStore: VaultChannelStateStoring {
 
   private let fileURL: URL
 
-  public init(fileURL: URL) {
+  public init(
+    fileURL: URL,
+    now: @escaping @Sendable () -> Date = { Date() },
+    log: @escaping @Sendable (String) -> Void = { _ in }
+  ) {
     self.fileURL = fileURL
   }
 
