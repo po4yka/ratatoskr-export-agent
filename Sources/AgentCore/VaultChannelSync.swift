@@ -3,17 +3,17 @@ import Foundation
 /// Connects a watched vault to its `cli` channel: the manifest after the
 /// connect, and the change batches after the manifest.
 ///
-/// The coordinator gives its drained changes to a stream, and one task gives
-/// them to the client in order. That task starts only after the first
-/// manifest, so no batch can go before it. The client keeps the changes that
+/// The coordinator gives its drained changes to a bounded buffer, and one
+/// task gives everything that waits to the client in order; over the bound,
+/// the task sends one manifest instead. That task starts only after the
+/// first manifest, so no batch can go before it. The client keeps the changes that
 /// a failed send leaves, and the task sends them again after the backoff of
 /// `VaultChannelRetry`, without a new file event. A stopped channel (its
 /// status) is not tried again.
 public final class VaultChannelSync: @unchecked Sendable {
   public let coordinator: VaultModeCoordinator
   public let client: NotesChannelClient
-  private let changes: AsyncStream<[VaultChange]>
-  private let continuation: AsyncStream<[VaultChange]>.Continuation
+  private let buffer: VaultChangeBuffer
   private let retry: VaultChannelRetry
   private let lock = NSLock()
   private var sender: Task<Void, Never>?
@@ -32,9 +32,9 @@ public final class VaultChannelSync: @unchecked Sendable {
     maximumBufferedChanges: Int = 10_000
   ) {
     self.retry = retry
-    (changes, continuation) = AsyncStream.makeStream(of: [VaultChange].self)
-    let continuation = continuation
-    let made = coordinator { continuation.yield($0) }
+    let buffer = VaultChangeBuffer(limit: maximumBufferedChanges)
+    self.buffer = buffer
+    let made = coordinator { buffer.add($0) }
     self.coordinator = made
     client = NotesChannelClient(
       http: http, vault: vault, vaultKey: vaultKey, vaultDisplayName: vaultDisplayName,
@@ -54,12 +54,19 @@ public final class VaultChannelSync: @unchecked Sendable {
       failure = error
     }
     let startAgain = failure != nil
-    let sender = Task { [client, changes, retry] in
+    let sender = Task { [client, buffer, retry] in
       if startAgain {
         await Self.retrying(retry, client, failed: 1, first: { try await client.start() }, again: { try await client.start() })
       }
-      for await list in changes {
-        await Self.retrying(retry, client, first: { try await client.send(list) }, again: { try await client.send([]) })
+      for await _ in buffer.signals {
+        switch buffer.take() {
+        case .changes(let list):
+          await Self.retrying(retry, client, first: { try await client.send(list) }, again: { try await client.send([]) })
+        case .manifest:
+          await Self.retrying(retry, client, first: { try await client.resync() }, again: { try await client.resync() })
+        case .nothing:
+          continue
+        }
       }
     }
     lock.withLock { self.sender = sender }
@@ -71,7 +78,7 @@ public final class VaultChannelSync: @unchecked Sendable {
   /// Stops the watcher and the sends.
   public func stop() {
     coordinator.stop()
-    continuation.finish()
+    buffer.finish()
     lock.withLock {
       sender?.cancel()
       sender = nil

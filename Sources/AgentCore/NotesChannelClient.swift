@@ -99,6 +99,18 @@ public actor NotesChannelClient {
     }
   }
 
+  /// Sends the manifest of the vault now. It replaces the changes that
+  /// wait, for example after the buffer of a sync dropped changes.
+  public func resync() async throws {
+    try checkNotStopped()
+    ready = false
+    do {
+      try await reconcile()
+    } catch {
+      throw stopOnRefusal(error)
+    }
+  }
+
   func forgetConnection() {
     connectionID = nil
     ready = false
