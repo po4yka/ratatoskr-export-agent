@@ -101,7 +101,17 @@ public final class WatchedVaultRegistry {
 
   /// The vaults whose folders resolve and can be read, with access begun.
   public func runtimeVaults() -> [RuntimeVault] {
-    []
+    vaults.compactMap { vault in
+      guard let resolved = try? bookmarkStore.resolvedFolder(from: vault.bookmarkData), !resolved.isStale else {
+        return nil
+      }
+      _ = bookmarkStore.startAccessing(resolved)
+      guard FileManager.default.isReadableFile(atPath: resolved.url.path) else {
+        bookmarkStore.stopAccessing(resolved)
+        return nil
+      }
+      return RuntimeVault(vault: vault, folder: resolved.url)
+    }
   }
 
   /// Removes a vault and ends the access to its folder.

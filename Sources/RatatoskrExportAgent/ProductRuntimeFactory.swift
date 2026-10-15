@@ -8,6 +8,7 @@ struct ProductRuntimeGraph: Sendable {
   let session: DeviceSessionCoordinator
   @MainActor let registry: WatchedFolderRegistry
   @MainActor let vaultRegistry: WatchedVaultRegistry
+  let vaults: VaultRuntimeComponent
   let watcher: InboxWatchCoordinator
   let processor: ArchiveCandidateProcessor
 
@@ -45,15 +46,17 @@ enum ProductRuntimeFactory {
     )
     let backend = makeBackend(journal: journal, session: session)
     let reminders = try makeReminders(support: support)
+    let vaults = makeVaultComponent(support: support, session: session, registry: vaultRegistry)
     let runtime = OperationalAgentRuntime(components: [
       InboxRuntimeComponent(watcher: watcher),
       UploadRuntimeComponent(queue: queue),
       backend,
       ReminderRuntimeComponent(watcher: watcher, reminders: reminders),
+      vaults,
     ])
     return ProductRuntimeGraph(
       runtime: runtime, queue: queue, journal: journal, session: session,
-      registry: registry, vaultRegistry: vaultRegistry, watcher: watcher, processor: processor
+      registry: registry, vaultRegistry: vaultRegistry, vaults: vaults, watcher: watcher, processor: processor
     )
   }
 

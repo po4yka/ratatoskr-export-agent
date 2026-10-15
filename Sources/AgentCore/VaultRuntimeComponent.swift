@@ -18,14 +18,58 @@ public protocol VaultSyncing: Sendable {
   func stop()
 }
 
-/// Runs one `VaultChannelSync` for each watched vault.
+/// Runs one `VaultChannelSync` for each watched vault. A reconcile reads the
+/// vaults again: it stops the sync of a vault that is gone or whose folder
+/// moved, and launches the sync of a new vault.
 public actor VaultRuntimeComponent: OperationalRuntimeComponent {
+  private let vaults: @Sendable () async -> [RuntimeVault]
+  private let makeSync: @Sendable (RuntimeVault) -> any VaultSyncing
+  private var running: [(vault: RuntimeVault, sync: any VaultSyncing)] = []
+
   public init(
     vaults: @escaping @Sendable () async -> [RuntimeVault],
     makeSync: @escaping @Sendable (RuntimeVault) -> any VaultSyncing
-  ) {}
+  ) {
+    self.vaults = vaults
+    self.makeSync = makeSync
+  }
 
-  public func start() async {}
-  public func reconcile() async {}
-  public func stop() async {}
+  public func start() async {
+    await reconcile()
+  }
+
+  public func reconcile() async {
+    let wanted = await vaults()
+    for entry in running where !wanted.contains(entry.vault) {
+      entry.sync.stop()
+    }
+    running.removeAll { !wanted.contains($0.vault) }
+    for vault in wanted where !running.contains(where: { $0.vault == vault }) {
+      let sync = makeSync(vault)
+      sync.launch()
+      running.append((vault, sync))
+    }
+  }
+
+  public func stop() async {
+    for entry in running {
+      entry.sync.stop()
+    }
+    running.removeAll()
+  }
+
+  /// The sync of a running vault.
+  public func sync(for id: UUID) -> (any VaultSyncing)? {
+    running.first { $0.vault.vault.id == id }?.sync
+  }
+}
+
+extension VaultChannelSync: VaultSyncing {
+  /// Starts the sync in a task: the connect and the manifest can take long,
+  /// and a failed start is tried again by the sync itself.
+  public func launch() {
+    Task {
+      try? await start()
+    }
+  }
 }
