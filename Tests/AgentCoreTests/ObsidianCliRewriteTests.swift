@@ -80,6 +80,31 @@ final class ObsidianCliRewriteTests: ObsidianCliTestCase {
     XCTAssertEqual(sent.changes.map(\.path), ["Index.md", "Gone.md"], "the linking notes that differ go to the change buffer")
   }
 
+  func testAFileMismatchWithRewritesNamesEveryLinkingNote() async throws {
+    try write("alpha and a newer edit", to: "Projects/Alpha.md")
+    try write("[[Alpha]]", to: "Index.md")
+    let apply = try fakeObsidian(running: true, cases: "rename) \(String(format: renamed, vault.path, vault.path)) ;;")
+    let server = queue(grouped(
+      operation(kind: "rename", path: "Projects/Alpha.md", target: "Projects/Apollo.md", base: sha("alpha")),
+      [LinkingNote(path: "Index.md", base: sha("[[Alpha]]"), expected: sha("[[Apollo]]"))]
+    ))
+    let sent = RewriteChanges()
+
+    let pass = try await client(server).applyQueuedOperations(apply) { sent.add($0) }
+
+    XCTAssertEqual(pass, .answered(1))
+    XCTAssertEqual(
+      groupResults(server).first as? NSDictionary,
+      [
+        "outcome": "base_mismatch", "local_sha256": sha("alpha and a newer edit"),
+        "rewrites": [["outcome": "base_mismatch", "path": "Index.md", "local_sha256": sha("[[Alpha]]")]],
+      ] as NSDictionary,
+      "the group refusal names every linking note, as the plugin does"
+    )
+    XCTAssertEqual(sent.changes.map(\.path), ["Projects/Alpha.md"], "the renamed file goes to the change buffer")
+    XCTAssertEqual(try invocations(), [["version"]])
+  }
+
   func testAnUnsafeRewritePathFailsTheGroup() async throws {
     try write("alpha", to: "Projects/Alpha.md")
     let apply = try fakeObsidian(running: true, cases: "rename) \(String(format: renamed, vault.path, vault.path)) ;;")

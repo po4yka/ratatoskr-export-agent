@@ -44,6 +44,7 @@ public actor NotesChannelClient {
   let vaultDisplayName: String
   let manifest: @Sendable () async -> VaultManifest
   let stateStore: (any VaultChannelStateStoring)?
+  let resultStore: (any DeviceResultStoring)?
   var connectionID: String?
   var stateRestored = false
   var ready = false
@@ -63,8 +64,10 @@ public actor NotesChannelClient {
     vaultDisplayName: String,
     connectionID: String? = nil,
     stateStore: (any VaultChannelStateStoring)? = nil,
+    resultStore: (any DeviceResultStoring)? = nil,
     manifest: @escaping @Sendable () async -> VaultManifest
   ) {
+    self.resultStore = resultStore
     self.http = http
     self.vault = vault
     self.vaultKey = vaultKey

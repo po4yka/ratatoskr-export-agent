@@ -195,3 +195,39 @@ and SHALL send the same result again on the next pass, without a new apply.
 
 - **WHEN** the result of a rename meets a network error
 - **THEN** the next pass reports the rename as `applied`, and the file is renamed once, verified by `ObsidianCliResendTests.testAResultIsSentAgainAfterANetworkError`
+
+### Requirement: A kept result survives a restart and a refused one is dropped
+
+The agent SHALL keep each result that notes did not take in a file of its support directory, SHALL
+send it again after a restart, and SHALL drop it and apply again when notes answers a `4xx` other than
+`409` or when its bytes are stale.
+
+#### Scenario: A restart after a server error
+
+- **WHEN** a result gets `503` and the agent restarts
+- **THEN** the new client sends the same result, and the property is set once, verified by `ObsidianCliRestartTests.testAKeptResultSurvivesARestart`
+
+#### Scenario: Notes refuses a kept result
+
+- **WHEN** notes answers `400` to a kept result
+- **THEN** the next pass applies the operation again, verified by `ObsidianCliRestartTests.testAKeptResultThatNotesRefusesIsDroppedAndAppliedAgain`
+
+### Requirement: A group refusal of the renamed file names every linking note
+
+When the renamed file of a group does not have its base hash, the agent SHALL send the group refusal
+with the hash of the file and every linking note with its own hash.
+
+#### Scenario: The renamed file has a newer edit
+
+- **WHEN** a rename with one linking note finds a newer edit in the renamed file
+- **THEN** the result is `base_mismatch` with the hash of the file and the note as `base_mismatch` with its own hash, verified by `ObsidianCliRewriteTests.testAFileMismatchWithRewritesNamesEveryLinkingNote`
+
+### Requirement: A moved file with the expected hash is already applied
+
+A `rename` or a `move` whose source is gone and whose target has the `expected_sha256` or the base hash
+SHALL be reported as `applied` without a CLI command.
+
+#### Scenario: Obsidian rewrote a link in the renamed file
+
+- **WHEN** the target has the expected hash of the rename, which differs from its base hash
+- **THEN** the result is `applied` with that hash and no CLI command runs, verified by `ObsidianCliRestartTests.testAMovedFileWithItsExpectedHashIsAlreadyApplied`
