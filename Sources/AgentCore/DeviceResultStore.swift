@@ -17,9 +17,13 @@ public actor FileDeviceResultStore: DeviceResultStoring {
   }
 
   private let fileURL: URL
+  private let now: @Sendable () -> Date
+  private let log: @Sendable (String) -> Void
 
-  public init(fileURL: URL) {
+  public init(fileURL: URL, now: @escaping @Sendable () -> Date = { Date() }, log: @escaping @Sendable (String) -> Void = { _ in }) {
     self.fileURL = fileURL
+    self.now = now
+    self.log = log
   }
 
   public func load(connectionID: String) async throws -> [String: Data] {

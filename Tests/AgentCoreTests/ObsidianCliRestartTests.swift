@@ -63,10 +63,76 @@ final class ObsidianCliRestartTests: ObsidianCliTestCase {
     XCTAssertEqual(results(server).last, ["outcome": "base_mismatch", "local_sha256": sha("gamma")], "a new apply, not the refused result")
   }
 
+  func testAKeptResultStaysOnARetryableRefusal() async throws {
+    let fixture = try propertyQueue(first: (429, #"{"code":"platform.rate_limited","message":"m","retryable":true}"#))
+    let (apply, set, server) = (fixture.apply, fixture.set, fixture.server)
+    let client = client(server)
+
+    _ = try? await client.applyQueuedOperations(apply)
+    server.script("/device-operations", status: 200, body: #"{"operations":[\#(set)],"next_cursor":"1"}"#)
+    server.script("/result", status: 200, body: succeeded)
+    _ = try await client.applyQueuedOperations(apply)
+
+    XCTAssertEqual(results(server).last, ["outcome": "applied", "sha256": sha("plain\nstatus: done")], "a 429 keeps the result")
+  }
+
+  func testAKeptResultIsDroppedOnAConflictThatIsNotBytesMissing() async throws {
+    let fixture = try propertyQueue(first: (409, #"{"code":"notes.write.conflict","message":"m","retryable":false}"#))
+    let (apply, set, server) = (fixture.apply, fixture.set, fixture.server)
+    let client = client(server)
+
+    _ = try? await client.applyQueuedOperations(apply)
+    server.script("/device-operations", status: 200, body: #"{"operations":[\#(set)],"next_cursor":"1"}"#)
+    server.script("/result", status: 200, body: succeeded)
+    _ = try await client.applyQueuedOperations(apply)
+
+    XCTAssertEqual(
+      results(server).last, ["outcome": "base_mismatch", "local_sha256": sha("plain\nstatus: done")], "a new apply, not the refused result"
+    )
+  }
+
+  func testAFailedLoadIsTriedAgainOnTheNextPass() async throws {
+    let fixture = try propertyQueue(first: (503, unavailable))
+    let (apply, set, server) = (fixture.apply, fixture.set, fixture.server)
+    let file = root.appendingPathComponent("Support/device-results.json")
+    let store = FileDeviceResultStore(fileURL: file)
+    _ = try? await stored(server, store).applyQueuedOperations(apply)
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+    server.script("/device-operations", status: 200, body: #"{"operations":[],"next_cursor":"0"}"#)
+    let restarted = stored(server, store)
+
+    _ = try? await restarted.applyQueuedOperations(apply)
+    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+    server.script("/device-operations", status: 200, body: #"{"operations":[\#(set)],"next_cursor":"1"}"#)
+    server.script("/result", status: 200, body: succeeded)
+    _ = try await restarted.applyQueuedOperations(apply)
+
+    XCTAssertEqual(results(server).last, ["outcome": "applied", "sha256": sha("plain\nstatus: done")], "the load is tried again")
+    XCTAssertEqual(try invocations().filter { $0.contains("property:set") }.count, 1)
+  }
+
+  /// A queue with one `set_property` whose first result gets `first`.
+  private func propertyQueue(first: (Int, String)) throws -> PropertyQueue {
+    try write("plain", to: "P.md")
+    let apply = try fakeObsidian(running: true, cases: "property:set) printf '\\nstatus: done' >> '\(vault.path)/P.md' ;;")
+    let set = sized(
+      operation(kind: "set_property", path: "P.md", target: nil, base: sha("plain"), content: sha(#""done""#), property: ("status", "set")), 6
+    )
+    let server = queue([set], results: [first])
+    server.script("/content", status: 200, body: #""done""#)
+    return PropertyQueue(apply: apply, set: set, server: server)
+  }
+
   private func stored(_ server: FakeNotesServer, _ store: FileDeviceResultStore) -> NotesChannelClient {
     NotesChannelClient(
       http: server, vault: vault, vaultKey: "vault-key-1", vaultDisplayName: "Fixture", connectionID: connection,
       resultStore: store, manifest: { VaultManifest(index: [:]) }
     )
   }
+}
+
+private struct PropertyQueue {
+  let apply: ObsidianCLIApply
+  let set: String
+  let server: FakeNotesServer
 }

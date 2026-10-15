@@ -231,3 +231,34 @@ SHALL be reported as `applied` without a CLI command.
 
 - **WHEN** the target has the expected hash of the rename, which differs from its base hash
 - **THEN** the result is `applied` with that hash and no CLI command runs, verified by `ObsidianCliRestartTests.testAMovedFileWithItsExpectedHashIsAlreadyApplied`
+
+### Requirement: Only the owner reads the result file
+
+The agent SHALL write `device-results.json` with the mode `0600`, also while it writes, and SHALL keep
+its folder at `0700`. A file that does not decode SHALL move to `device-results.json.corrupt-<seconds>`
+with one log line.
+
+#### Scenario: A save
+
+- **WHEN** the store saves a result
+- **THEN** the file is `0600`, the folder is `0700`, and no temporary file is left, verified by `DeviceResultStoreTests.testTheFileIsReadableByTheOwnerOnly`
+
+#### Scenario: A corrupt file
+
+- **WHEN** the file does not decode
+- **THEN** it moves aside with one log line, and the store works again, verified by `DeviceResultStoreTests.testACorruptFileIsMovedAsideAndTheStoreStartsEmpty`
+
+### Requirement: Which answers keep a result
+
+The agent SHALL keep a result on `401`, `403`, `408`, `429`, a retryable fault, a `5xx` or a network
+error, and SHALL drop it on any other `4xx`. A failed load SHALL be tried again on the next pass.
+
+#### Scenario: Retryable and final refusals
+
+- **WHEN** notes answers `429` to a result, or `409` with a code that is not `notes.channel.bytes_missing`
+- **THEN** the `429` keeps the result and the `409` drops it, verified by `ObsidianCliRestartTests.testAKeptResultStaysOnARetryableRefusal` and `ObsidianCliRestartTests.testAKeptResultIsDroppedOnAConflictThatIsNotBytesMissing`
+
+#### Scenario: An unreadable file
+
+- **WHEN** the result file cannot be read at the first pass
+- **THEN** the next pass loads it and sends the kept result, verified by `ObsidianCliRestartTests.testAFailedLoadIsTriedAgainOnTheNextPass`
