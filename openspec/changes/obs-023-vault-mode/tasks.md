@@ -83,4 +83,4 @@
 ## 18. Review follow-ups (workspace OBS-023 tasks 12.27 to 12.36)
 
 - [x] 18.1 RED: `Tests/AgentCoreTests/VaultChannelLaunchTests.swift` asserts that a launch after `stop()` neither watches the vault nor connects, and that a `stop()` before the launch task runs leaves no watcher running. Confirm that both fail by their assertions.
-- [ ] 18.2 GREEN: a stopped `VaultChannelSync` does not start, and a start that a stop overtakes stops what it started. Verify 18.1 and the full suite.
+- [x] 18.2 GREEN: a stopped `VaultChannelSync` does not start, and a start that a stop overtakes stops what it started. Verify 18.1 and the full suite.

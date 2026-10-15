@@ -17,6 +17,7 @@ public final class VaultChannelSync: @unchecked Sendable {
   private let runner: VaultRetryRunner
   private let lock = NSLock()
   private var sender: Task<Void, Never>?
+  private var stopped = false
 
   /// `coordinator` makes the coordinator of the vault with the change sink
   /// that this type gives it.
@@ -45,16 +46,36 @@ public final class VaultChannelSync: @unchecked Sendable {
   /// Starts the watcher, connects, and sends the manifest. When the start of
   /// the client fails, the send task tries it again after the backoff, and
   /// the error goes to the caller.
+  /// A stopped sync does not start again: `stop()` can run before the task
+  /// of `launch()`, and then nothing may start.
   public func start(drainInterval: TimeInterval? = 0.5) async throws {
+    guard !isStopped else {
+      return
+    }
     try coordinator.start(drainInterval: drainInterval)
+    guard !isStopped else {
+      coordinator.stop()
+      return
+    }
     var failure: (any Error)?
     do {
       try await client.start()
     } catch {
       failure = error
     }
-    let startAgain = failure != nil
-    let sender = Task { [client, buffer, runner] in
+    guard keep(sendTask(startAgain: failure != nil)) else {
+      coordinator.stop()
+      return
+    }
+    if let failure {
+      throw failure
+    }
+  }
+
+  /// The task that gives the waiting changes to the client, after a start
+  /// again when the first start failed.
+  private func sendTask(startAgain: Bool) -> Task<Void, Never> {
+    Task { [client, buffer, runner] in
       if startAgain {
         await runner.run(failed: 1, first: { try await client.start() }, again: { try await client.start() })
       }
@@ -69,10 +90,21 @@ public final class VaultChannelSync: @unchecked Sendable {
         }
       }
     }
-    lock.withLock { self.sender = sender }
-    if let failure {
-      throw failure
+  }
+
+  /// Keeps the send task, or cancels it when a stop came first.
+  private func keep(_ task: Task<Void, Never>) -> Bool {
+    let kept = lock.withLock {
+      guard !stopped else {
+        return false
+      }
+      sender = task
+      return true
     }
+    if !kept {
+      task.cancel()
+    }
+    return kept
   }
 
   /// What the vault shows in the menu: stopped, retrying during a backoff,
@@ -99,8 +131,13 @@ public final class VaultChannelSync: @unchecked Sendable {
     coordinator.stop()
     buffer.finish()
     lock.withLock {
+      stopped = true
       sender?.cancel()
       sender = nil
     }
+  }
+
+  private var isStopped: Bool {
+    lock.withLock { stopped }
   }
 }
