@@ -45,4 +45,4 @@
 ## 10. A failed send is tried again by a timer (workspace OBS-023 tasks 12.17 and 12.18)
 
 - [x] 10.1 RED: `Tests/AgentCoreTests/VaultChannelRetryTests.swift` asserts that the retry delay doubles from 5 seconds to at most 5 minutes and that jitter takes off at most half of it, that a failed send is sent again after the backoff (5 s, then 10 s, through an injected sleep) without a new file event, and that a failed start is tried again by the same timer. Confirm that all 3 fail by their assertions (a `VaultChannelRetry` stub gives 0 and the sync does not try again).
-- [ ] 10.2 GREEN: `VaultChannelRetry` gives the delay with jitter, and the send task of `VaultChannelSync` tries a failed start or send again after it, until it works, the channel is stopped, or the sync stops. Verify 10.1 and the full suite.
+- [x] 10.2 GREEN: `VaultChannelRetry` gives the delay with jitter, and the send task of `VaultChannelSync` tries a failed start or send again after it, until it works, the channel is stopped, or the sync stops. Verify 10.1 and the full suite.
