@@ -49,10 +49,17 @@ public struct PlatformNotesChannelHTTP: NotesChannelHTTP {
   }
 
   public func perform(_ request: NotesChannelRequest) async throws -> NotesChannelAnswer {
-    guard let endpoint = URLSessionPlatformDeviceTransport.endpoint(for: origin, path: request.path) else {
+    // The part after `?` is the query, for example the cursor of the queue.
+    let parts = request.path.split(separator: "?", maxSplits: 1).map(String.init)
+    guard let path = parts.first, let endpoint = URLSessionPlatformDeviceTransport.endpoint(for: origin, path: path),
+          var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
       throw PlatformDeviceTransportError.invalidOrigin
     }
-    var unsigned = URLRequest(url: endpoint)
+    components.percentEncodedQuery = parts.count == 2 ? parts[1] : nil
+    guard let url = components.url else {
+      throw PlatformDeviceTransportError.invalidOrigin
+    }
+    var unsigned = URLRequest(url: url)
     unsigned.httpMethod = request.method
     unsigned.httpBody = request.body
     if let contentType = request.contentType {

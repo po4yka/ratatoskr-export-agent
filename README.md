@@ -220,6 +220,22 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   hash or length takes them from its file, or the agent sends a manifest. A `vault-channels.json`
   that does not decode is moved to `vault-channels.json.corrupt-<seconds>`, and the agent starts
   with no saved connections.
+- **Writes.** When the owner turns on the write mode of the connection (workspace change
+  `add-notes-write-back`, OBS-024), notes keeps the checked writes in a queue of the connection. Each
+  vault sync reads it every 15 seconds (`GET /v1/notes/connections/{id}/device-operations`) and
+  applies the operations in order. Before an operation, the agent compares the hash of the local
+  file with the base hash; when they differ, it changes nothing, reports `base_mismatch` and sends
+  the local file. It applies `create`, `rename`, `move`, `delete` and `set_property` with the
+  Obsidian CLI (`obsidian rename` and `obsidian move` update the links, and `obsidian delete` moves
+  the file to the trash and never gets `permanent`), and `update` with an atomic write in the vault
+  folder. A path that resolves outside the vault, or that has a segment that starts with `.`, is
+  refused. Its own changes come back through the watcher, and notes takes them as the
+  acknowledgements of the writes.
+- **Obsidian 1.12.7 or later.** The writes need the Obsidian CLI, which the Obsidian installer 1.12.7
+  or later registers (Settings → General → Command line interface). The CLI answers only while the
+  app runs, and its first command starts the app. So the agent does not run the CLI while Obsidian
+  does not run, and never starts Obsidian for a write: the operations stay in the queue, and their
+  notes operations stay `running`.
 - **Menu.** Each vault shows connecting, connected, offline and trying again, or stopped with its
   cause. A vault whose connection the owner removed, or that already has another connection, has
   Connect Vault <name> Again, which forgets the saved connection and connects again.

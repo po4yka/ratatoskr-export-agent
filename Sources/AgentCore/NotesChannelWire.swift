@@ -63,6 +63,7 @@ struct NotesFault: Decodable {
   static let channelMismatch = "notes.channel_mismatch"
   static let sequenceGap = "notes.channel.sequence_gap"
   static let bytesMissing = "notes.channel.bytes_missing"
+  static let operationNotFound = "notes.device_operation.not_found"
   static let vaultAlreadyConnected = "notes.connection.vault_already_connected"
   static let invalidRequest = "notes.request.invalid"
   /// The cause of a stop that the agent names itself: notes takes at most

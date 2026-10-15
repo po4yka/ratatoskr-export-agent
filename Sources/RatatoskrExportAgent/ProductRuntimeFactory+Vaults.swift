@@ -1,4 +1,5 @@
 import AgentCore
+import AppKit
 import Foundation
 
 extension ProductRuntimeFactory {
@@ -18,6 +19,15 @@ extension ProductRuntimeFactory {
       store: FileWatchedVaultStore(fileURL: support.appending(path: "vault-preferences.json")),
       bookmarkStore: SecurityScopedBookmarkStore(),
       vaultKey: { ObsidianVaultKey.key(forVault: $0, config: ObsidianVaultKey.userConfig) ?? grant.key(forVault: $0) }
+    )
+  }
+
+  /// The apply step of the queued writes of a vault. A write can make
+  /// Obsidian update the links of many files, so the CLI has 30 seconds.
+  nonisolated static func makeOperations(_ runtime: RuntimeVault) -> ObsidianCLIApply {
+    ObsidianCLIApply(
+      vault: runtime.folder, vaultName: runtime.vault.displayName, runner: ProcessObsidianCLIRunner(timeLimit: 30),
+      obsidianRunning: { !NSRunningApplication.runningApplications(withBundleIdentifier: ObsidianCLIApply.bundleIdentifier).isEmpty }
     )
   }
 
@@ -47,7 +57,8 @@ extension ProductRuntimeFactory {
             )
           },
           http: http, vault: runtime.folder, vaultKey: runtime.vault.vaultKey,
-          vaultDisplayName: runtime.vault.displayName, stateStore: store
+          vaultDisplayName: runtime.vault.displayName, stateStore: store,
+          operations: makeOperations(runtime)
         )
       }
     )

@@ -10,13 +10,22 @@ import Foundation
 /// a failed send leaves, and the task sends them again after the backoff of
 /// `VaultChannelRetry`, without a new file event. A stopped channel (its
 /// status) is not tried again.
+///
+/// With `operations`, a second task reads the queue of the writes of the
+/// connection every `queueInterval` and applies them through the Obsidian CLI
+/// (workspace spec `notes-write-delivery`). The vault changes that the
+/// writes make come back through the watcher as changes, and notes takes
+/// them as the acknowledgements of the writes.
 public final class VaultChannelSync: @unchecked Sendable {
   public let coordinator: VaultModeCoordinator
   public let client: NotesChannelClient
   private let buffer: VaultChangeBuffer
   private let runner: VaultRetryRunner
+  private let operations: ObsidianCLIApply?
+  private let queueInterval: TimeInterval
   private let lock = NSLock()
   private var sender: Task<Void, Never>?
+  private var reader: Task<Void, Never>?
   private var stopped = false
 
   /// `coordinator` makes the coordinator of the vault with the change sink
@@ -30,7 +39,9 @@ public final class VaultChannelSync: @unchecked Sendable {
     connectionID: String? = nil,
     stateStore: (any VaultChannelStateStoring)? = nil,
     retry: VaultChannelRetry = VaultChannelRetry(),
-    maximumBufferedChanges: Int = 10_000
+    maximumBufferedChanges: Int = 10_000,
+    operations: ObsidianCLIApply? = nil,
+    queueInterval: TimeInterval = 15
   ) {
     let buffer = VaultChangeBuffer(limit: maximumBufferedChanges)
     self.buffer = buffer
@@ -41,6 +52,8 @@ public final class VaultChannelSync: @unchecked Sendable {
       connectionID: connectionID, stateStore: stateStore, manifest: { made.manifest() }
     )
     runner = VaultRetryRunner(retry: retry, client: client)
+    self.operations = operations
+    self.queueInterval = queueInterval
   }
 
   /// Starts the watcher, connects, and sends the manifest. When the start of
@@ -67,6 +80,9 @@ public final class VaultChannelSync: @unchecked Sendable {
       coordinator.stop()
       return
     }
+    if let operations {
+      _ = keep(Self.queueReader(client: client, buffer: buffer, operations: operations, interval: queueInterval), reading: true)
+    }
     if let failure {
       throw failure
     }
@@ -92,13 +108,18 @@ public final class VaultChannelSync: @unchecked Sendable {
     }
   }
 
-  /// Keeps the send task, or cancels it when a stop came first.
-  private func keep(_ task: Task<Void, Never>) -> Bool {
+  /// Keeps the send task, or the queue task when `reading`, or cancels it
+  /// when a stop came first.
+  private func keep(_ task: Task<Void, Never>, reading: Bool = false) -> Bool {
     let kept = lock.withLock {
       guard !stopped else {
         return false
       }
-      sender = task
+      if reading {
+        reader = task
+      } else {
+        sender = task
+      }
       return true
     }
     if !kept {
@@ -134,6 +155,8 @@ public final class VaultChannelSync: @unchecked Sendable {
       stopped = true
       sender?.cancel()
       sender = nil
+      reader?.cancel()
+      reader = nil
     }
   }
 

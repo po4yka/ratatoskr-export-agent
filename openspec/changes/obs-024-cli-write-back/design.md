@@ -9,17 +9,19 @@ when it does not run.
 ### Ask the app before the CLI
 
 The apply step asks an injected check whether the Obsidian app runs (bundle id `md.obsidian`). Only
-then does it run `obsidian version`. When the app does not run or the CLI does not answer, the pass
-ends with `awaitingObsidian`, nothing is applied, and no result is sent, so notes keeps every
-operation. A CLI run that gives no answer during an operation ends the pass in the same way.
+then does it run `obsidian version`, once per pass and only when an operation waits. When the app
+does not run or the CLI does not answer, the pass ends with `awaitingObsidian`, nothing is applied,
+and no result is sent, so notes keeps every operation. A CLI run that gives no answer during an
+operation ends the pass in the same way.
 
 ### The disk decides the result
 
 The CLI can report success for a command that did nothing. After a `create`, `rename`, `move` or
 `delete`, the agent checks the disk: the target exists and the source is gone. The result hash is the
-hash of the file on disk after the operation. A `rename` or a `move` whose source is gone and whose
-target has the base hash, and a `delete` whose file is gone, are reported as `applied`, so a pass that
-stopped after the CLI ran does not raise a false conflict.
+hash of the file on disk after the operation. An `update` or a `create` whose file has the hash of the
+content, a `rename` or a `move` whose source is gone and whose target has the base hash, and a
+`delete` whose file is gone, are reported as `applied`, so a pass that stopped after the change and
+before its result does not raise a false conflict.
 
 ### Rename or move
 
