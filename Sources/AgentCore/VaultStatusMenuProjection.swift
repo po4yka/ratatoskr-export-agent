@@ -42,7 +42,8 @@ public enum VaultStatusMenuProjection {
   private static func state(_ status: VaultSyncStatus) -> String {
     switch status {
     case .connecting: "connecting"
-    case .connected, .awaitingObsidian: "connected"
+    case .connected: "connected"
+    case .awaitingObsidian: "waits for Obsidian"
     case .retrying: "offline, trying again"
     case .stopped(NotesFault.removed): "stopped, the connection was removed"
     case .stopped(NotesFault.channelMismatch): "stopped, another device or channel sends this vault"

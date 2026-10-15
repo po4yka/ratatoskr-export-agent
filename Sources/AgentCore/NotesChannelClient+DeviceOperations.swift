@@ -15,6 +15,14 @@ extension NotesChannelClient {
   public func applyQueuedOperations(
     _ apply: ObsidianCLIApply, onLocalChange: @escaping @Sendable ([VaultChange]) -> Void = { _ in }
   ) async throws -> DeviceQueuePass {
+    let pass = try await queuePass(apply, onLocalChange: onLocalChange)
+    waitsForObsidian = pass == .awaitingObsidian
+    return pass
+  }
+
+  private func queuePass(
+    _ apply: ObsidianCLIApply, onLocalChange: @escaping @Sendable ([VaultChange]) -> Void
+  ) async throws -> DeviceQueuePass {
     if case .stopped = status {
       return .answered(0)
     }

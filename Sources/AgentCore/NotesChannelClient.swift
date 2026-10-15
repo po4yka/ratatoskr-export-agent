@@ -48,6 +48,9 @@ public actor NotesChannelClient {
   var stateRestored = false
   var ready = false
   var pending: [VaultChange] = []
+  /// The last pass over the queue of the writes ended because Obsidian does
+  /// not run or its CLI does not answer.
+  var waitsForObsidian = false
   private var nextSequence: UInt64 = 1
 
   public init(

@@ -234,11 +234,12 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
 - **Obsidian 1.12.7 or later.** The writes need the Obsidian CLI, which the Obsidian installer 1.12.7
   or later registers (Settings → General → Command line interface). The CLI answers only while the
   app runs, and its first command starts the app. So the agent does not run the CLI while Obsidian
-  does not run, and never starts Obsidian for a write: the operations stay in the queue, and their
-  notes operations stay `running`.
-- **Menu.** Each vault shows connecting, connected, offline and trying again, or stopped with its
-  cause. A vault whose connection the owner removed, or that already has another connection, has
-  Connect Vault <name> Again, which forgets the saved connection and connects again.
+  does not run, and never starts Obsidian for a write: the operations stay in the queue, their
+  notes operations stay `running`, and the menu shows "Vault <name>: waits for Obsidian" until a
+  pass finds the app running.
+- **Menu.** Each vault shows connecting, connected, offline and trying again, waits for Obsidian, or
+  stopped with its cause. A vault whose connection the owner removed, or that already has another
+  connection, has Connect Vault <name> Again, which forgets the saved connection and connects again.
 
 ## Duplicate handling
 

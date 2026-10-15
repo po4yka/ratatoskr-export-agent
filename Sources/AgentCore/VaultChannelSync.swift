@@ -129,6 +129,7 @@ public final class VaultChannelSync: @unchecked Sendable {
   }
 
   /// What the vault shows in the menu: stopped, retrying during a backoff,
+  /// waiting for Obsidian after a queue pass that found the app closed,
   /// connected after an applied manifest, or connecting.
   public func status() async -> VaultSyncStatus {
     if case .stopped(let code) = await client.status {
@@ -136,6 +137,9 @@ public final class VaultChannelSync: @unchecked Sendable {
     }
     if runner.isWaiting {
       return .retrying
+    }
+    if await client.waitsForObsidian {
+      return .awaitingObsidian
     }
     return await client.isReady ? .connected : .connecting
   }

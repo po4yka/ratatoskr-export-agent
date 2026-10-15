@@ -15,8 +15,8 @@
 ## 4. The menu shows a vault that waits for Obsidian (workspace OBS-024 tasks 12.5 and 12.6)
 
 - [x] 4.1 RED: `Tests/AgentCoreTests/VaultStatusMenuProjectionTests.swift` `testAVaultThatWaitsForObsidianHasItsTitle` asserts the title `Vault Work: waits for Obsidian`, and `Tests/AgentCoreTests/VaultSyncObsidianStatusTests.swift` `testAPassThatWaitsForObsidianShowsInTheStatus` asserts that a sync whose queue holds an operation while the app does not run has the status `awaitingObsidian`, and `connected` after a pass while the app runs. Confirm that both fail by their assertions (a stub status case that the sync never gives, with the title of `connected`).
-- [ ] 4.2 GREEN: the sync keeps the end of the last queue pass, `status()` gives `awaitingObsidian` after a pass that waits for Obsidian unless the channel is stopped or retrying, and the menu shows `Vault <name>: waits for Obsidian`. Verify 4.1 and the full suite.
+- [x] 4.2 GREEN: the sync keeps the end of the last queue pass, `status()` gives `awaitingObsidian` after a pass that waits for Obsidian unless the channel is stopped or retrying, and the menu shows `Vault <name>: waits for Obsidian`. Verify 4.1 and the full suite.
 
 ## 5. Gate
 
-- [ ] 5.1 Run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-024-cli-write-back --strict`. A gate run is not a behaviour and cannot start from a failing test.
+- [x] 5.1 Run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-024-cli-write-back --strict`. A gate run is not a behaviour and cannot start from a failing test.
