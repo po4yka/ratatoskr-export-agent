@@ -87,6 +87,12 @@ public final class VaultModeCoordinator: @unchecked Sendable {
     }
   }
 
+  /// The manifest of the index: every path that the coordinator has read,
+  /// also with the changes that wait in the watcher.
+  public func manifest() -> VaultManifest {
+    withLock { VaultManifest(index: scanner.index) }
+  }
+
   /// Delivers the changes that are final at `time`.
   public func drain(at time: Date) {
     let changes = withLock { checking ? [] : watcher.drain(at: time) }

@@ -26,4 +26,4 @@
 ## 6. A watched vault sends to notes (workspace OBS-023 tasks 12.9 and 12.10)
 
 - [x] 6.1 RED: `Tests/AgentCoreTests/VaultChannelSyncTests.swift` `testWatchedVaultSendsItsManifestAfterTheConnectAndItsBatchesAfter` starts a `VaultChannelSync` on a temporary vault with a scripted event source and the fake notes transport, creates `B.md`, drains, and asserts the order connect, manifest (with `A.md`), manifest, change batch `[1]`, and that a stop stops the event source. Confirm that it fails by its assertions (a `VaultChannelSync` stub sends nothing).
-- [ ] 6.2 GREEN: `VaultChannelSync` starts the coordinator, starts the client (connect and manifest of the coordinator index), and then gives each drained change list to the client in order through one task. Verify 6.1 and the full suite.
+- [x] 6.2 GREEN: `VaultChannelSync` starts the coordinator, starts the client (connect and manifest of the coordinator index), and then gives each drained change list to the client in order through one task. Verify 6.1 and the full suite.
