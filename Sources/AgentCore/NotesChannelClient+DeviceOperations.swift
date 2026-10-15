@@ -29,6 +29,7 @@ extension NotesChannelClient {
     guard connectionID != nil else {
       return .answered(0)
     }
+    await loadKeptResults()
     var cursor: String?
     var answered = 0
     while true {
@@ -38,42 +39,20 @@ extension NotesChannelClient {
         return .awaitingObsidian
       }
       for operation in page.operations {
-        guard let result = try await result(of: operation, apply, onLocalChange: onLocalChange) else {
+        guard let body = try await result(of: operation, apply, onLocalChange: onLocalChange) else {
           return .awaitingObsidian
         }
-        try await report(result, of: operation)
-        unsentResults[operation.operationID] = nil
+        try await report(body, of: operation)
+        await keep(nil, for: operation.operationID)
         answered += 1
       }
       guard page.operations.count >= Self.queuePageSize else {
         // The queue lists no operation of a result that is still kept.
-        unsentResults.removeAll()
+        await forgetKeptResults()
         return .answered(answered)
       }
       cursor = page.nextCursor
     }
-  }
-
-  /// The result of `operation`: the result that notes did not take on an
-  /// earlier pass, or the result of a new apply, kept until notes takes it.
-  /// Nil when the operation waits for Obsidian.
-  private func result(
-    of operation: DeviceOperation, _ apply: ObsidianCLIApply, onLocalChange: @Sendable ([VaultChange]) -> Void
-  ) async throws -> DeviceOperationResult? {
-    if let kept = unsentResults[operation.operationID] {
-      return kept
-    }
-    let outcome = try await apply.apply(operation) { try await self.content(of: operation) }
-    guard let result = DeviceOperationResult(outcome) else {
-      return nil
-    }
-    unsentResults[operation.operationID] = result
-    let changes = localChanges(of: outcome, operation)
-    if !changes.isEmpty {
-      onLocalChange(changes)
-    }
-    try await uploadRewrites(of: outcome, operation)
-    return result
   }
 
   private func queuePage(after cursor: String?) async throws -> DeviceOperationPage {
@@ -85,35 +64,12 @@ extension NotesChannelClient {
     return try decodeNotesAnswer(DeviceOperationPage.self, from: answer)
   }
 
-  private func content(of operation: DeviceOperation) async throws -> Data {
+  func content(of operation: DeviceOperation) async throws -> Data {
     let answer = try await get("device-operations/\(operation.operationID)/content", bound: operation.contentLength)
     guard answer.status == 200 else {
       throw NotesFault.error(of: answer)
     }
     return answer.body
-  }
-
-  /// Sends the result. An `applied` result names bytes that notes must have:
-  /// on `409` `notes.channel.bytes_missing` the client uploads the file of the
-  /// result and sends the result again. A `404`
-  /// `notes.device_operation.not_found` means that the operation ended.
-  private func report(_ result: DeviceOperationResult, of operation: DeviceOperation) async throws {
-    let body = try JSONEncoder().encode(result)
-    // Notes names one missing hash per answer: the file and each linking note.
-    for _ in 0..<(2 + operation.rewrites.count) {
-      let answer = try await perform("POST", "device-operations/\(operation.operationID)/result", body: body)
-      let fault = NotesFault.of(answer)
-      switch (answer.status, fault?.code) {
-      case (200, _), (404, NotesFault.operationNotFound):
-        return
-      case (409, NotesFault.bytesMissing):
-        let paths = [operation.resultPath] + operation.rewrites.map(\.path)
-        try await upload(fault?.missingSHA256 ?? [], from: try paths.compactMap(blobFile))
-      default:
-        throw NotesFault.error(of: answer)
-      }
-    }
-    throw NotesChannelError.notSettled
   }
 
   /// A `GET` on a route of the connection. With `bound`, the binding reads
@@ -129,13 +85,14 @@ extension NotesChannelClient {
 
   /// The changes that send the local files of a base mismatch: the file of
   /// the operation, or each linking note that does not have its base hash.
-  private func localChanges(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) -> [VaultChange] {
+  func localChanges(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) -> [VaultChange] {
     switch outcome {
     case .baseMismatch(let local):
       let kind: VaultChangeKind = local == nil ? .deleted : (operation.baseHash == nil ? .created : .updated)
       return [VaultChange(sequence: 0, kind: kind, path: operation.path)]
-    case .rewriteMismatch(_, let rewrites):
-      return rewrites.filter(\.differs).map { VaultChange(sequence: 0, kind: $0.sha256 == nil ? .deleted : .updated, path: $0.path) }
+    case .rewriteMismatch(let local, let rewrites):
+      let file = local == operation.baseHash ? [] : [VaultChange(sequence: 0, kind: local == nil ? .deleted : .updated, path: operation.path)]
+      return file + rewrites.filter(\.differs).map { VaultChange(sequence: 0, kind: $0.sha256 == nil ? .deleted : .updated, path: $0.path) }
     default:
       return []
     }
@@ -143,7 +100,7 @@ extension NotesChannelClient {
 
   /// Uploads the bytes of each linking note whose hash is not its expected
   /// hash, before the result names it: notes holds the expected bytes only.
-  private func uploadRewrites(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) async throws {
+  func uploadRewrites(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) async throws {
     guard case .applied(_, let rewrites) = outcome else {
       return
     }
@@ -156,7 +113,7 @@ extension NotesChannelClient {
   }
 
   /// The file at `path` with its hash and length; nil when it is gone.
-  private func blobFile(_ path: String) throws -> NotesBlobFile? {
+  func blobFile(_ path: String) throws -> NotesBlobFile? {
     let url = vault.appendingPathComponent(path)
     guard FileManager.default.fileExists(atPath: url.path) else {
       return nil

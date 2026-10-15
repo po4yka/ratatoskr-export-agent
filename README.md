@@ -230,10 +230,12 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   the file to the trash and never gets `permanent`). A rename lists its linking notes: the agent
   checks the base hash of each before the CLI, refuses the whole rename when one differs (naming
   each note with its own hash), and reports the hash of each after the CLI, uploading the bytes that
-  notes does not expect. A result that notes does not take with `200` is sent again on the next
-  pass, without a new apply. It applies `update` with an atomic write in the vault folder. A path
-  that resolves outside the vault, that has a segment that starts with `.` or ends in `.` or a
-  space, or that holds `\`, `:`, a control character or DEL, is refused with
+  notes does not expect. A result that notes does not take with `200` is kept in
+  `device-results.json` of the support directory and sent again on the next pass, also after a
+  restart, without a new apply; a result that notes refuses with a `4xx` other than `409` is
+  dropped, and the next pass applies again. It applies `update` with an atomic write in the vault
+  folder. A path that resolves outside the vault, that has a segment that starts with `.` or ends in
+  `.` or a space, or that holds `\`, `:`, a control character or DEL, is refused with
   `notes.write.unsafe_path`. Any other local error (for example a folder at the path) fails the
   operation with `notes.channel.refused`, and the agent goes on with the next one. The agent reads
   at most the `length_bytes` of the content and one byte, and refuses longer content. A create that

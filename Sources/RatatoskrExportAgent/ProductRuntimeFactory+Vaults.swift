@@ -32,12 +32,14 @@ extension ProductRuntimeFactory {
   }
 
   /// One `VaultChannelSync` per watched vault, through the paired origin. The
-  /// connection of each vault is saved in `vault-channels.json`.
+  /// connection of each vault is saved in `vault-channels.json`, and the
+  /// results that notes did not take yet in `device-results.json`.
   static func makeVaultComponent(
     support: URL, session: DeviceSessionCoordinator, registry: WatchedVaultRegistry
   ) -> VaultRuntimeComponent {
     let http = SessionBoundNotesChannelHTTP(session: session)
     let store = FileVaultChannelStateStore(fileURL: support.appending(path: "vault-channels.json"))
+    let results = FileDeviceResultStore(fileURL: support.appending(path: "device-results.json"))
     return VaultRuntimeComponent(
       vaults: {
         _ = await registry.adoptObsidianKeys(clearing: store)
@@ -57,7 +59,7 @@ extension ProductRuntimeFactory {
             )
           },
           http: http, vault: runtime.folder, vaultKey: runtime.vault.vaultKey,
-          vaultDisplayName: runtime.vault.displayName, stateStore: store,
+          vaultDisplayName: runtime.vault.displayName, stateStore: store, resultStore: results,
           operations: makeOperations(runtime)
         )
       }

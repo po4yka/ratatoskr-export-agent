@@ -97,6 +97,9 @@ Notes takes a result only with `200`. The client keeps each result by operation 
 `200` or `404` `notes.device_operation.not_found`. After a `5xx` or a network error the pass ends, the
 operation stays in the queue, and the next pass sends the kept result in place of a new apply, which
 could find its own change as a base mismatch (a `set_property` has no expected hash). A full pass
-forgets the kept results, because the queue no longer lists their operations. The results are kept
-in memory: after a restart the agent applies again, and the checks of an operation that is already
-in the vault cover every kind but `set_property`.
+forgets the kept results, because the queue no longer lists their operations. The results are also
+kept in `device-results.json` of the support directory, so a restart sends them again. A kept result
+that gets a `4xx` other than `409`, or whose bytes changed before the upload, can never be taken: it
+is dropped, and the next pass applies again. A moved file with the expected hash of the rename (a
+link rewritten inside it) or its base hash is already applied. When the renamed file of a group has
+another base, the refusal names every linking note with its own hash, as the plugin does.

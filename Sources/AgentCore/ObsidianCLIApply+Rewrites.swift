@@ -24,11 +24,21 @@ extension ObsidianCLIApply {
   /// base hash: the hash of the renamed file `local`, and every note with
   /// its own hash; nil when every note has its base hash.
   func rewriteMismatch(_ notes: [LinkingNote], local: String?) throws -> DeviceOperationOutcome? {
+    let refusal = try groupRefusal(notes, local: local)
+    guard case .rewriteMismatch(_, let found) = refusal, found.contains(where: \.differs) else {
+      return nil
+    }
+    return refusal
+  }
+
+  /// The refusal of the whole group, as the plugin sends it: the hash
+  /// `local` of the renamed file and every linking note with its own hash.
+  func groupRefusal(_ notes: [LinkingNote], local: String?) throws -> DeviceOperationOutcome {
     let found = try notes.map { note in
       let hash = try files.sha256(at: note.url)
       return RewriteOutcome(path: note.rewrite.path, sha256: hash, differs: hash != note.rewrite.baseHash)
     }
-    return found.contains(where: \.differs) ? .rewriteMismatch(localSHA256: local, rewrites: found) : nil
+    return .rewriteMismatch(localSHA256: local, rewrites: found)
   }
 
   /// `outcome` with the hash of each linking note after the CLI. Obsidian

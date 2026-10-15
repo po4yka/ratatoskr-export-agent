@@ -97,7 +97,7 @@ public struct ObsidianCLIApply: Sendable {
       return done
     }
     guard local == operation.baseHash else {
-      return .baseMismatch(localSHA256: local)
+      return notes.isEmpty ? .baseMismatch(localSHA256: local) : try groupRefusal(notes, local: local)
     }
     if let refused = try rewriteMismatch(notes, local: local) {
       return refused

@@ -38,6 +38,7 @@ public final class VaultChannelSync: @unchecked Sendable {
     vaultDisplayName: String,
     connectionID: String? = nil,
     stateStore: (any VaultChannelStateStoring)? = nil,
+    resultStore: (any DeviceResultStoring)? = nil,
     retry: VaultChannelRetry = VaultChannelRetry(),
     maximumBufferedChanges: Int = 10_000,
     operations: ObsidianCLIApply? = nil,
@@ -49,7 +50,7 @@ public final class VaultChannelSync: @unchecked Sendable {
     self.coordinator = made
     client = NotesChannelClient(
       http: http, vault: vault, vaultKey: vaultKey, vaultDisplayName: vaultDisplayName,
-      connectionID: connectionID, stateStore: stateStore, manifest: { made.manifest() }
+      connectionID: connectionID, stateStore: stateStore, resultStore: resultStore, manifest: { made.manifest() }
     )
     runner = VaultRetryRunner(retry: retry, client: client)
     self.operations = operations

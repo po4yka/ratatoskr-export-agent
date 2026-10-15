@@ -66,7 +66,9 @@ extension ObsidianCLIApply {
       return operation.baseHash == nil ? nil : .applied(sha256: nil)
     case ("rename", nil), ("move", nil):
       let moved = try files.sha256(at: target)
-      return operation.baseHash != nil && moved == operation.baseHash ? .applied(sha256: moved) : nil
+      // Obsidian can rewrite a link inside the renamed file: the expected hash.
+      let known = [operation.expectedSHA256, operation.baseHash].compactMap { $0 }
+      return operation.baseHash != nil && moved.map(known.contains) == true ? .applied(sha256: moved) : nil
     default:
       return nil
     }
