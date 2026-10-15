@@ -191,6 +191,29 @@ A resumption token that Edge dropped is not retried: the agent discards the toke
 
 Retries are bounded. `UploadRetryPolicy.maximumAttempts` (default 24, about one day at the 5 s initial delay doubling to the 3600 s cap) counts consecutive retryable failures; the next one fails the entry with the reason `retries_exhausted`. A capacity deferral does not count, and a chunk the receiver acknowledged resets the count. A failed entry shows its reason in the status menu ("Upload failed (retries exhausted)", "Upload failed (session expired)"), keeps its preserved archive, and waits for Retry Now, which gives it a fresh attempt and reopen budget.
 
+## Obsidian vaults (the `cli` channel)
+
+The agent can also send an Obsidian vault to `ratatoskr-notes` without Obsidian Sync and without
+the plugin (workspace change `add-notes-vault-connections`, OBS-023).
+
+- **Add a vault.** Settings → Obsidian vaults → Add Vault…, and pick the vault folder. The registry
+  keeps a security-scoped bookmark, the folder name and the vault key in `vault-preferences.json`
+  of the support directory.
+- **Vault key.** The key is the vault id of Obsidian, the same key that the plugin sends, so notes
+  keeps one channel per vault. The agent reads it from `obsidian.json` of the account. The
+  sandboxed build has no entitlement to read that file, so it generates a key once per vault, and
+  that key is not the key of the plugin.
+- **Sends.** One sync per vault watches the folder with FSEvents, connects (`POST
+  /v1/notes/connections` with channel `cli`), sends the manifest, and then sends the change
+  batches. The connection id and the committed sequence are in `vault-channels.json`, so a restart
+  resumes the same connection with the manifest first. No secret is in these files.
+- **Failures.** A failed send or start is tried again after 5 seconds, doubled up to 5 minutes, with
+  jitter. More than 10 000 waiting changes become one manifest. `notes.channel_mismatch` and a
+  removed connection (`410 notes.connection.removed`) stop the vault.
+- **Menu.** Each vault shows connecting, connected, offline and trying again, or stopped. A vault
+  whose connection the owner removed has Connect Vault <name> Again, which forgets the saved
+  connection and connects again.
+
 ## Duplicate handling
 
 The archive hash is the primary duplicate identity. Before upload, the agent asks Ratatoskr whether the content hash is already present.

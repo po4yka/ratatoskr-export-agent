@@ -75,3 +75,7 @@
 
 - [x] 16.1 RED: `Tests/AgentCoreTests/VaultSyncStatusTests.swift` asserts that a sync is `connected` after the manifest and `retrying` during a backoff, and that a vault stopped by `notes.connection.removed` connects again after `connectAgain()` with a new connection, which replaces the saved one; `Tests/AgentCoreTests/VaultStatusMenuProjectionTests.swift` asserts a title for each status and that only a removed vault can connect again; `Tests/RatatoskrExportAgentTests/VaultStatusMenuTests.swift` asserts the menu rows and a Connect Again item for a removed vault. Confirm that all fail by their assertions (stubs give `connecting`, empty titles and no rows).
 - [x] 16.2 GREEN: `VaultChannelSync.status()` and `connectAgain()`, `VaultStatusMenuProjection`, `VaultRuntimeComponent.statusRows()` and `connectAgain(id:)`, and the menu rows with Connect Again, refreshed with the import status. Verify 16.1 and the full suite.
+
+## 17. Documentation and gate (after workspace OBS-023 task 12.26)
+
+- [x] 17.1 Describe the vault mode in README.md and the proposal, and run the gates of `ci.yml`, the DEVELOPMENT.md drift check, the 8 steps of the workspace `reusable-fleet.yml`, `zizmor .github/workflows` and `openspec validate obs-023-vault-mode --strict`. Documentation and a gate run are not behaviours and cannot start from a failing test.
