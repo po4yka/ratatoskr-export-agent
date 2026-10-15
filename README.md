@@ -201,18 +201,28 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   of the support directory.
 - **Vault key.** The key is the vault id of Obsidian, the same key that the plugin sends, so notes
   keeps one channel per vault. The agent reads it from `obsidian.json` of the account. The
-  sandboxed build has no entitlement to read that file, so it generates a key once per vault, and
-  that key is not the key of the plugin.
+  sandboxed build cannot read that file until the owner selects it once with "Allow reading the
+  Obsidian vault list…" in the vault settings; the agent keeps a security-scoped bookmark of it in
+  `obsidian-config.bookmark` (no new entitlement). Without that grant, the agent generates a key
+  once per vault, and that key is not the key of the plugin. After the grant, the next reconcile
+  gives such a vault the key of Obsidian and removes the saved connection of the old key, so the
+  vault connects again with the right key. The notes connection of the old key stays until the
+  owner removes it.
 - **Sends.** One sync per vault watches the folder with FSEvents, connects (`POST
   /v1/notes/connections` with channel `cli`), sends the manifest, and then sends the change
   batches. The connection id and the committed sequence are in `vault-channels.json`, so a restart
   resumes the same connection with the manifest first. No secret is in these files.
 - **Failures.** A failed send or start is tried again after 5 seconds, doubled up to 5 minutes, with
-  jitter. More than 10 000 waiting changes become one manifest. `notes.channel_mismatch` and a
-  removed connection (`410 notes.connection.removed`) stop the vault.
-- **Menu.** Each vault shows connecting, connected, offline and trying again, or stopped. A vault
-  whose connection the owner removed has Connect Vault <name> Again, which forgets the saved
-  connection and connects again.
+  jitter. More than 10 000 waiting changes become one manifest. These answers stop the vault, and
+  the menu names the cause: `notes.channel_mismatch`, a removed connection (`410
+  notes.connection.removed`), `409 notes.connection.vault_already_connected`, `400
+  notes.request.invalid`, and a manifest over 100 000 entries or 32 MiB. A change that lacks its
+  hash or length takes them from its file, or the agent sends a manifest. A `vault-channels.json`
+  that does not decode is moved to `vault-channels.json.corrupt-<seconds>`, and the agent starts
+  with no saved connections.
+- **Menu.** Each vault shows connecting, connected, offline and trying again, or stopped with its
+  cause. A vault whose connection the owner removed, or that already has another connection, has
+  Connect Vault <name> Again, which forgets the saved connection and connects again.
 
 ## Duplicate handling
 
