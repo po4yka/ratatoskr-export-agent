@@ -2,6 +2,20 @@ import CryptoKit
 import Foundation
 
 extension ObsidianCLIApply {
+  /// A `create` with no base that finds an empty file at its path: the file
+  /// of its own `obsidian create` in an earlier pass whose write did not
+  /// happen (a time-out, or a failed write). The agent writes the bytes and
+  /// does not run the CLI again. Nil for any other operation.
+  func finishedCreate(
+    _ operation: DeviceOperation, local: String?, source: URL, content: @Sendable () async throws -> Data
+  ) async throws -> DeviceOperationOutcome? {
+    guard operation.kind == "create", operation.baseHash == nil, local == NotesBlobFile.emptySHA256 else {
+      return nil
+    }
+    try files.write(try verified(try await content(), operation), to: source)
+    return .applied(sha256: try files.sha256(at: source))
+  }
+
   /// The hash of the file after the operation. Obsidian can write the
   /// frontmatter of a `set_property` after the CLI returned, so a file that
   /// still has the base hash is read once more after `settle`.
@@ -75,7 +89,11 @@ extension ObsidianCLIApply {
   }
 
   /// The bytes of the operation, when their hash is the hash of its content.
+  /// Content longer than its `length_bytes` is refused before the hash.
   func verified(_ data: Data, _ operation: DeviceOperation) throws -> Data {
+    guard data.count <= operation.contentLength ?? Int.max else {
+      throw NotesChannelError.invalidAnswer
+    }
     let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     guard digest == operation.contentSHA256 else {
       throw NotesChannelError.invalidAnswer

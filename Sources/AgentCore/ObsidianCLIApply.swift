@@ -92,6 +92,9 @@ public struct ObsidianCLIApply: Sendable {
     if let done = try alreadyApplied(operation, local: local, target: target) {
       return done
     }
+    if let done = try await finishedCreate(operation, local: local, source: source, content: content) {
+      return done
+    }
     guard local == operation.baseHash else {
       return .baseMismatch(localSHA256: local)
     }

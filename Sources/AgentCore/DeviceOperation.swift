@@ -14,6 +14,8 @@ public struct DeviceOperation: Decodable, Equatable, Sendable {
   /// The SHA-256 of the bytes that `.../content` gives; nil when the
   /// operation has no bytes.
   public let contentSHA256: String?
+  /// The `length_bytes` of the content; the read takes no more.
+  public let contentLength: Int?
   public let propertyKey: String?
   public let propertyChange: String?
   public let expectedSHA256: String?
@@ -39,7 +41,9 @@ public struct DeviceOperation: Decodable, Equatable, Sendable {
     path = try container.decode(String.self, forKey: .path)
     targetPath = try container.decodeIfPresent(String.self, forKey: .targetPath)
     baseHash = try container.decodeIfPresent(String.self, forKey: .baseHash)
-    contentSHA256 = try container.decodeIfPresent(PlatformBlobReference.self, forKey: .content)?.digest.hex
+    let content = try container.decodeIfPresent(PlatformBlobReference.self, forKey: .content)
+    contentSHA256 = content?.digest.hex
+    contentLength = content?.lengthBytes
     propertyKey = try container.decodeIfPresent(String.self, forKey: .propertyKey)
     propertyChange = try container.decodeIfPresent(String.self, forKey: .propertyChange)
     expectedSHA256 = try container.decodeIfPresent(String.self, forKey: .expectedSHA256)

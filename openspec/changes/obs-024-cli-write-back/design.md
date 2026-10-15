@@ -65,3 +65,16 @@ An error of the content read is a transport error: the pass ends, and the operat
 queue for the next pass. Any other error of the apply step (a folder at the path, a failed write, bytes
 that do not match their digest) settles the operation as `failed` with `notes.channel.refused`, the
 code of the plugin, and the pass goes on with the next operation.
+
+### An unfinished create
+
+`obsidian create` makes an empty file before the agent writes the bytes. When the CLI times out, or
+the write fails, an empty file stays. A later `create` with no base that finds an empty file at its
+path takes it as its own and writes the bytes without the CLI. A user file that is empty by chance is
+then replaced; the base of a create says that notes knows no file there.
+
+### The content bound
+
+The content read carries `length_bytes` as its bound. The HTTPS binding reads the body as a stream
+and stops after the bound and one byte, so the agent never holds more. Content longer than
+`length_bytes` is refused before its digest is computed.

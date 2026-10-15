@@ -68,7 +68,7 @@ public struct PlatformNotesChannelHTTP: NotesChannelHTTP {
     if let contentType = request.contentType {
       unsigned.setValue(contentType, forHTTPHeaderField: "Content-Type")
     }
-    let (data, response) = try await client.perform(unsigned)
+    let (data, response) = try await client.perform(unsigned, bound: request.maximumBodyBytes)
     return NotesChannelAnswer(status: response.statusCode, body: data)
   }
 }

@@ -65,7 +65,7 @@ extension NotesChannelClient {
   }
 
   private func content(of operation: DeviceOperation) async throws -> Data {
-    let answer = try await get("device-operations/\(operation.operationID)/content")
+    let answer = try await get("device-operations/\(operation.operationID)/content", bound: operation.contentLength)
     guard answer.status == 200 else {
       throw NotesFault.error(of: answer)
     }
@@ -97,11 +97,15 @@ extension NotesChannelClient {
     throw NotesChannelError.notSettled
   }
 
-  private func get(_ route: String) async throws -> NotesChannelAnswer {
+  /// A `GET` on a route of the connection. With `bound`, the binding reads
+  /// at most `bound` and one byte of the body.
+  private func get(_ route: String, bound: Int? = nil) async throws -> NotesChannelAnswer {
     guard let connectionID else {
       throw NotesChannelError.connectionGone
     }
-    return try await http.perform(NotesChannelRequest(method: "GET", path: "v1/notes/connections/\(connectionID)/\(route)"))
+    return try await http.perform(
+      NotesChannelRequest(method: "GET", path: "v1/notes/connections/\(connectionID)/\(route)", maximumBodyBytes: bound)
+    )
   }
 
   /// The change that sends the local file of a base mismatch.

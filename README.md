@@ -231,7 +231,10 @@ the plugin (workspace change `add-notes-vault-connections`, OBS-023).
   folder. A path that resolves outside the vault, that has a segment that starts with `.` or ends in
   `.` or a space, or that holds `\`, `:`, a control character or DEL, is refused with
   `notes.write.unsafe_path`. Any other local error (for example a folder at the path) fails the
-  operation with `notes.channel.refused`, and the agent goes on with the next one. Each CLI command runs on a thread of its own. Its own changes come back through the watcher, and notes takes them as the
+  operation with `notes.channel.refused`, and the agent goes on with the next one. The agent reads
+  at most the `length_bytes` of the content and one byte, and refuses longer content. A create
+  that finds the empty file of its own earlier `obsidian create` writes the bytes and does not run
+  the CLI again. Each CLI command runs on a thread of its own. Its own changes come back through the watcher, and notes takes them as the
   acknowledgements of the writes.
 - **Obsidian 1.12.7 or later.** The writes need the Obsidian CLI, which the Obsidian installer 1.12.7
   or later registers (Settings → General → Command line interface). The CLI answers only while the
