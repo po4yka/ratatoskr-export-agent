@@ -13,6 +13,8 @@ public enum NotesChannelError: Error, Equatable, Sendable {
   case channelMismatch
   /// The connection does not exist (`notes.connection.not_found`).
   case connectionGone
+  /// The owner removed the connection (`410` `notes.connection.removed`).
+  case connectionRemoved
   /// No file of the request has the bytes that the notes service asks for,
   /// or the file changed after its change was recorded.
   case staleBytes
