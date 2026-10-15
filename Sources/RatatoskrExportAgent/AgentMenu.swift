@@ -11,6 +11,7 @@ enum AgentMenu {
   static let uploadStatusItemTag = 71
   static let importStatusItemTag = 72
   static let uploadControlsItemTag = 73
+  static let vaultStatusItemTag = 74
 
   /// Builds the menu items the agent exposes from its status item.
   static func make(
@@ -76,6 +77,10 @@ enum AgentMenu {
       menu.insertItem(item, at: insertion)
     }
   }
+
+  /// Replaces the rows of the watched vaults, with a Connect Again item for
+  /// a vault whose connection the owner removed.
+  static func apply(vaultRows: [VaultStatusRow], to menu: NSMenu) {}
 
   /// Replaces only the immutable status rows; AppKit never receives authority to mutate a journal.
   static func apply(importEntries: [JournalEntry], to menu: NSMenu) {

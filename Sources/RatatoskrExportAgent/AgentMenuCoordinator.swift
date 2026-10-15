@@ -94,6 +94,9 @@ final class AgentMenuCoordinator: NSObject {
   }
 
   @objc
+  func connectVaultAgainSelected(_ sender: NSMenuItem) {}
+
+  @objc
   func checkForUpdatesSelected() {
     guard openUpdateURL(ApplicationUpdatePolicy.releasesURL) else {
       presentUpdateFailure()

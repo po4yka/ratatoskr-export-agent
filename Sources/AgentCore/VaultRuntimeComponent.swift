@@ -16,6 +16,9 @@ public protocol VaultSyncing: Sendable {
   /// Starts the sync without waiting for the network.
   func launch()
   func stop()
+  func status() async -> VaultSyncStatus
+  /// Forgets the saved connection of a removed vault and connects again.
+  func connectAgain() async
 }
 
 /// Runs one `VaultChannelSync` for each watched vault. A reconcile reads the

@@ -74,4 +74,6 @@ private struct FakeSync: VaultSyncing {
 
   func launch() { log.append("launch \(name)") }
   func stop() { log.append("stop \(name)") }
+  func status() async -> VaultSyncStatus { .connected }
+  func connectAgain() async {}
 }

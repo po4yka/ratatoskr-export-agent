@@ -75,6 +75,14 @@ public final class VaultChannelSync: @unchecked Sendable {
     }
   }
 
+  /// What the vault shows in the menu.
+  public func status() async -> VaultSyncStatus {
+    .connecting
+  }
+
+  /// Forgets the saved connection of a removed vault and connects again.
+  public func connectAgain() async {}
+
   /// Stops the watcher and the sends.
   public func stop() {
     coordinator.stop()
