@@ -32,6 +32,27 @@ final class NotesChannelHTTPTests: XCTestCase {
     XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer fixture-access")
     XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
   }
+
+  func testQueryOfThePathIsSentAsAQuery() async throws {
+    let seen = SeenRequests()
+    ResumableURLProtocol.interceptor = { request in
+      seen.append(request)
+      return (200, Data(#"{"operations":[],"next_cursor":"7"}"#.utf8))
+    }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [ResumableURLProtocol.self]
+    let http = PlatformNotesChannelHTTP(
+      origin: URL(string: "https://ratatoskr.example")!,
+      authorizer: ScenarioAuthorizer(),
+      session: URLSession(configuration: configuration)
+    )
+
+    _ = try await http.perform(NotesChannelRequest(method: "GET", path: "v1/notes/connections/c1/device-operations?after=7"))
+
+    XCTAssertEqual(
+      seen.requests.first?.url?.absoluteString, "https://ratatoskr.example/v1/notes/connections/c1/device-operations?after=7"
+    )
+  }
 }
 
 private final class SeenRequests: @unchecked Sendable {
