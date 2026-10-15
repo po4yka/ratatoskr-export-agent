@@ -42,9 +42,10 @@ extension NotesChannelClient {
         guard let result = DeviceOperationResult(outcome) else {
           return .awaitingObsidian
         }
-        if case .baseMismatch(let local) = outcome {
-          onLocalChange([Self.localChange(operation, localSHA256: local)])
+        if let change = localChange(of: outcome, operation) {
+          onLocalChange([change])
         }
+        try await uploadRewrites(of: outcome, operation)
         try await report(result, of: operation)
         answered += 1
       }
@@ -78,18 +79,16 @@ extension NotesChannelClient {
   /// `notes.device_operation.not_found` means that the operation ended.
   private func report(_ result: DeviceOperationResult, of operation: DeviceOperation) async throws {
     let body = try JSONEncoder().encode(result)
-    for _ in 0..<2 {
+    // Notes names one missing hash per answer: the file and each linking note.
+    for _ in 0..<(2 + operation.rewrites.count) {
       let answer = try await perform("POST", "device-operations/\(operation.operationID)/result", body: body)
       let fault = NotesFault.of(answer)
       switch (answer.status, fault?.code) {
       case (200, _), (404, NotesFault.operationNotFound):
         return
       case (409, NotesFault.bytesMissing):
-        let file = try StreamingHasher().fingerprint(at: vault.appendingPathComponent(operation.resultPath))
-        try await upload(
-          fault?.missingSHA256 ?? [],
-          from: [NotesBlobFile(path: operation.resultPath, sha256: file.sha256Hex, lengthBytes: file.byteSize)]
-        )
+        let paths = [operation.resultPath] + operation.rewrites.map(\.path)
+        try await upload(fault?.missingSHA256 ?? [], from: try paths.compactMap(blobFile))
       default:
         throw NotesFault.error(of: answer)
       }
@@ -108,9 +107,42 @@ extension NotesChannelClient {
     )
   }
 
-  /// The change that sends the local file of a base mismatch.
-  private static func localChange(_ operation: DeviceOperation, localSHA256: String?) -> VaultChange {
-    let kind: VaultChangeKind = localSHA256 == nil ? .deleted : (operation.baseHash == nil ? .created : .updated)
-    return VaultChange(sequence: 0, kind: kind, path: operation.path)
+  /// The change that sends the local file of a base mismatch: the file of
+  /// the operation, or the linking note that refused the group.
+  private func localChange(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) -> VaultChange? {
+    switch outcome {
+    case .baseMismatch(let local):
+      let kind: VaultChangeKind = local == nil ? .deleted : (operation.baseHash == nil ? .created : .updated)
+      return VaultChange(sequence: 0, kind: kind, path: operation.path)
+    case .rewriteMismatch(let path):
+      let exists = FileManager.default.fileExists(atPath: vault.appendingPathComponent(path).path)
+      return VaultChange(sequence: 0, kind: exists ? .updated : .deleted, path: path)
+    default:
+      return nil
+    }
+  }
+
+  /// Uploads the bytes of each linking note whose hash is not its expected
+  /// hash, before the result names it: notes holds the expected bytes only.
+  private func uploadRewrites(of outcome: DeviceOperationOutcome, _ operation: DeviceOperation) async throws {
+    guard case .applied(_, let rewrites) = outcome else {
+      return
+    }
+    let expected = Dictionary(operation.rewrites.map { ($0.path, $0.expectedSHA256) }, uniquingKeysWith: { first, _ in first })
+    let changed = rewrites.filter { $0.sha256 != nil && $0.sha256 != expected[$0.path] ?? nil }
+    guard !changed.isEmpty else {
+      return
+    }
+    try await upload(changed.compactMap(\.sha256), from: try changed.map(\.path).compactMap(blobFile))
+  }
+
+  /// The file at `path` with its hash and length; nil when it is gone.
+  private func blobFile(_ path: String) throws -> NotesBlobFile? {
+    let url = vault.appendingPathComponent(path)
+    guard FileManager.default.fileExists(atPath: url.path) else {
+      return nil
+    }
+    let found = try StreamingHasher().fingerprint(at: url)
+    return NotesBlobFile(path: path, sha256: found.sha256Hex, lengthBytes: found.byteSize)
   }
 }

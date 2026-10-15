@@ -19,6 +19,8 @@ public struct DeviceOperation: Decodable, Equatable, Sendable {
   public let propertyKey: String?
   public let propertyChange: String?
   public let expectedSHA256: String?
+  /// The linking notes of a rename or a move; empty for any other kind.
+  public let rewrites: [DeviceRewrite]
 
   enum CodingKeys: String, CodingKey {
     case operationID = "operation_id"
@@ -31,6 +33,7 @@ public struct DeviceOperation: Decodable, Equatable, Sendable {
     case propertyKey = "property_key"
     case propertyChange = "property_change"
     case expectedSHA256 = "expected_sha256"
+    case rewrites
   }
 
   public init(from decoder: any Decoder) throws {
@@ -47,6 +50,7 @@ public struct DeviceOperation: Decodable, Equatable, Sendable {
     propertyKey = try container.decodeIfPresent(String.self, forKey: .propertyKey)
     propertyChange = try container.decodeIfPresent(String.self, forKey: .propertyChange)
     expectedSHA256 = try container.decodeIfPresent(String.self, forKey: .expectedSHA256)
+    rewrites = try container.decodeIfPresent([DeviceRewrite].self, forKey: .rewrites) ?? []
   }
 
   /// The path of the file after the operation.
@@ -69,10 +73,13 @@ struct DeviceOperationPage: Decodable {
 /// What the apply step did with one operation.
 public enum DeviceOperationOutcome: Equatable, Sendable {
   /// The vault has the change; the file at the result path has this hash, or
-  /// none after a delete.
-  case applied(sha256: String?)
+  /// none after a delete. `rewrites` are the linking notes of a rename.
+  case applied(sha256: String?, rewrites: [RewriteOutcome] = [])
   /// The local file did not have the base hash; nothing changed.
   case baseMismatch(localSHA256: String?)
+  /// The linking note at `path` did not have its base hash; nothing of the
+  /// group changed.
+  case rewriteMismatch(path: String)
   /// The operation cannot be applied; the code names the cause.
   case failed(code: String)
   /// Obsidian does not run or its CLI does not answer; the operation stays
@@ -86,11 +93,15 @@ struct DeviceOperationResult: Encodable {
   let sha256: String?
   let localSHA256: String?
   let code: String?
+  var rewrites: [RewriteResultBody] = []
 
   init?(_ outcome: DeviceOperationOutcome) {
     switch outcome {
-    case .applied(let sha256): (self.outcome, self.sha256, localSHA256, code) = ("applied", sha256, nil, nil)
+    case .applied(let sha256, let rewrites):
+      (self.outcome, self.sha256, localSHA256, code) = ("applied", sha256, nil, nil)
+      self.rewrites = rewrites.map(RewriteResultBody.init)
     case .baseMismatch(let local): (self.outcome, sha256, localSHA256, code) = ("base_mismatch", nil, local, nil)
+    case .rewriteMismatch: (self.outcome, sha256, localSHA256, code) = ("base_mismatch", nil, nil, nil)
     case .failed(let code): (self.outcome, sha256, localSHA256, self.code) = ("failed", nil, nil, code)
     case .awaitingObsidian: return nil
     }
@@ -101,6 +112,7 @@ struct DeviceOperationResult: Encodable {
     case sha256
     case localSHA256 = "local_sha256"
     case code
+    case rewrites
   }
 
   func encode(to encoder: any Encoder) throws {
@@ -109,6 +121,9 @@ struct DeviceOperationResult: Encodable {
     try container.encodeIfPresent(sha256, forKey: .sha256)
     try container.encodeIfPresent(localSHA256, forKey: .localSHA256)
     try container.encodeIfPresent(code, forKey: .code)
+    if !rewrites.isEmpty {
+      try container.encode(rewrites, forKey: .rewrites)
+    }
   }
 }
 

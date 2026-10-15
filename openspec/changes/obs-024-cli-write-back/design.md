@@ -78,3 +78,14 @@ then replaced; the base of a create says that notes knows no file there.
 The content read carries `length_bytes` as its bound. The HTTPS binding reads the body as a stream
 and stops after the bound and one byte, so the agent never holds more. Content longer than
 `length_bytes` is refused before its digest is computed.
+
+### A rename with its link rewrites
+
+Notes lists a rename or a move with `rewrites`: the path, the base hash and the expected hash of each
+linking note. Before the CLI, the agent checks the path and the base hash of each note; a refused path
+fails the group with `notes.write.unsafe_path`, and a base mismatch refuses the group with a top-level
+`base_mismatch` (no `local_sha256`, because the mismatch is not in the renamed file) and gives the note
+to the change buffer. After the CLI, the agent hashes each note (once more after `settle` when a note
+still has its base hash), uploads each hash that is not the expected hash, and lists the notes in the
+`rewrites` of the `applied` result. A note that is gone is listed as `base_mismatch`. The agent has no
+plain-move path: a rename or a move always runs the Obsidian CLI, which updates the links.

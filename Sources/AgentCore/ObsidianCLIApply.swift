@@ -85,12 +85,13 @@ public struct ObsidianCLIApply: Sendable {
   private func applyChecked(
     _ operation: DeviceOperation, content: @Sendable () async throws -> Data
   ) async throws -> DeviceOperationOutcome {
-    guard let source = files.url(of: operation.path), let target = files.url(of: operation.resultPath) else {
+    guard let source = files.url(of: operation.path), let target = files.url(of: operation.resultPath),
+          let notes = linkingNotes(of: operation) else {
       return .failed(code: Code.unsafePath)
     }
     let local = try files.sha256(at: source)
     if let done = try alreadyApplied(operation, local: local, target: target) {
-      return done
+      return try await reportingRewrites(done, notes)
     }
     if let done = try await finishedCreate(operation, local: local, source: source, content: content) {
       return done
@@ -98,10 +99,13 @@ public struct ObsidianCLIApply: Sendable {
     guard local == operation.baseHash else {
       return .baseMismatch(localSHA256: local)
     }
+    if let refused = try rewriteMismatch(notes) {
+      return refused
+    }
     if let refused = try await change(operation, source: source, target: target, content: content) {
       return refused
     }
-    return .applied(sha256: try await resultHash(operation, at: target))
+    return try await reportingRewrites(.applied(sha256: try await resultHash(operation, at: target)), notes)
   }
 
   /// Runs one CLI command on the vault. Nil when the command ran and the disk

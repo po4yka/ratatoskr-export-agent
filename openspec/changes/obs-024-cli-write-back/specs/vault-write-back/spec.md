@@ -162,11 +162,9 @@ with `notes.channel.refused`.
 ### Requirement: A rename with its link rewrites is one group
 
 For a `rename` or a `move` that lists `rewrites`, the agent SHALL check the path and the base hash of
-each linking note before it runs the CLI. A refused path SHALL fail the group with
-`notes.write.unsafe_path`, and a base mismatch SHALL refuse the group with a top-level `base_mismatch`
-and give the linking note to the change buffer, with nothing changed. After the CLI, the agent SHALL
-report the hash of each linking note in the `rewrites` of the `applied` result, and SHALL upload each
-hash that is not the `expected_sha256` of its note before the result.
+each linking note before the CLI, and SHALL refuse the whole group when one check fails. After the
+CLI, it SHALL report the hash of each linking note in the `rewrites` of the `applied` result, and
+SHALL upload first each hash that is not the `expected_sha256` of its note.
 
 #### Scenario: Obsidian rewrites two linking notes
 
