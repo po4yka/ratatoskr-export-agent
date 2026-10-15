@@ -22,6 +22,8 @@ public enum NotesChannelError: Error, Equatable, Sendable {
   case notSettled
   case invalidAnswer
   case refused(status: Int, code: String?)
+  /// A refusal that no retry can change; the code names the cause.
+  case permanent(code: String)
 }
 
 /// The `cli` channel of one vault (workspace spec `notes-device-channels`).
