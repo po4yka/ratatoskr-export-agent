@@ -99,3 +99,40 @@ the content read SHALL end the pass and leave the operation in the queue.
 
 - **WHEN** the queue holds an update of `Folder.md`, which is a folder, and then an update of `A.md`
 - **THEN** the first result is `failed` with `notes.channel.refused`, and `A.md` is applied in the same pass, verified by `ObsidianCliApplyLocalTests.testALocalErrorFailsTheOperationAndThePassGoesOn`
+
+### Requirement: A base mismatch changes nothing
+
+When the local file does not have the base hash, the agent SHALL NOT read the content, SHALL NOT run
+a CLI command for the operation, SHALL report `base_mismatch` with the local hash, and SHALL give the
+local file to the change buffer.
+
+#### Scenario: A newer local edit
+
+- **WHEN** the queue holds an update of `A.md` whose base is not the hash of the local file
+- **THEN** the file does not change, the result is `base_mismatch` with `local_sha256`, and the change buffer gets an `updated` change of `A.md`, verified by `ObsidianCliApplyLocalTests.testBaseMismatchChangesNothingAndSendsTheLocalFile`
+
+### Requirement: An update is an atomic write
+
+After a base match, the agent SHALL write the bytes of an `update` through a new file that it renames
+over the old one, and SHALL report the hash of the written file.
+
+#### Scenario: An update
+
+- **WHEN** the queue holds an update of `A.md` with the hash of the local file as its base
+- **THEN** `A.md` has the new bytes in a new file, no temporary file is left, and the result has their hash, verified by `ObsidianCliApplyLocalTests.testUpdateWritesTheBytesAtomicallyAfterABaseMatch`
+
+### Requirement: `set_property` passes the value with its type, after a digest check
+
+The agent SHALL check the bytes of a `set_property` against their digest, SHALL run `property:set`
+with the value and its type (`number`, `checkbox` or `list`; none for a string), and SHALL run
+`property:remove` with the name.
+
+#### Scenario: Four values
+
+- **WHEN** the queue sets a string, a number, a boolean and a list
+- **THEN** the CLI arguments carry `type=number`, `type=checkbox` and `type=list` (items joined with `, `), verified by `ObsidianCliPropertyTests.testSetPassesTheValueAndItsType` and `ObsidianCliPropertyTests.testRemovePassesTheName`
+
+#### Scenario: Bytes that do not match their digest
+
+- **WHEN** the content of a `set_property` does not have the hash of its digest
+- **THEN** the result is `failed` with `notes.channel.refused` and no CLI command runs for it, verified by `ObsidianCliPropertyTests.testSetPropertyContentIsCheckedAgainstItsDigest`
