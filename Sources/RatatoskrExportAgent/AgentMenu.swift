@@ -80,7 +80,30 @@ enum AgentMenu {
 
   /// Replaces the rows of the watched vaults, with a Connect Again item for
   /// a vault whose connection the owner removed.
-  static func apply(vaultRows: [VaultStatusRow], to menu: NSMenu) {}
+  static func apply(vaultRows: [VaultStatusRow], to menu: NSMenu) {
+    menu.items.filter { $0.tag == vaultStatusItemTag }.forEach(menu.removeItem)
+    let coordinator = menu.items.compactMap { $0.target as? AgentMenuCoordinator }.first
+    var items: [NSMenuItem] = []
+    for row in vaultRows {
+      let item = NSMenuItem(title: VaultStatusMenuProjection.title(row), action: nil, keyEquivalent: "")
+      item.isEnabled = false
+      items.append(item)
+      if VaultStatusMenuProjection.canConnectAgain(row), let coordinator {
+        let action = actionItem(
+          title: "Connect Vault \(row.displayName) Again",
+          action: #selector(AgentMenuCoordinator.connectVaultAgainSelected(_:)),
+          target: coordinator
+        )
+        action.representedObject = row.id
+        items.append(action)
+      }
+    }
+    let insertion = menu.items.firstIndex(where: { $0.isSeparatorItem }) ?? menu.items.count
+    for (offset, item) in items.enumerated() {
+      item.tag = vaultStatusItemTag
+      menu.insertItem(item, at: insertion + offset)
+    }
+  }
 
   /// Replaces only the immutable status rows; AppKit never receives authority to mutate a journal.
   static func apply(importEntries: [JournalEntry], to menu: NSMenu) {

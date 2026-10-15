@@ -14,7 +14,7 @@ public final class VaultChannelSync: @unchecked Sendable {
   public let coordinator: VaultModeCoordinator
   public let client: NotesChannelClient
   private let buffer: VaultChangeBuffer
-  private let retry: VaultChannelRetry
+  private let runner: VaultRetryRunner
   private let lock = NSLock()
   private var sender: Task<Void, Never>?
 
@@ -31,7 +31,6 @@ public final class VaultChannelSync: @unchecked Sendable {
     retry: VaultChannelRetry = VaultChannelRetry(),
     maximumBufferedChanges: Int = 10_000
   ) {
-    self.retry = retry
     let buffer = VaultChangeBuffer(limit: maximumBufferedChanges)
     self.buffer = buffer
     let made = coordinator { buffer.add($0) }
@@ -40,6 +39,7 @@ public final class VaultChannelSync: @unchecked Sendable {
       http: http, vault: vault, vaultKey: vaultKey, vaultDisplayName: vaultDisplayName,
       connectionID: connectionID, stateStore: stateStore, manifest: { made.manifest() }
     )
+    runner = VaultRetryRunner(retry: retry, client: client)
   }
 
   /// Starts the watcher, connects, and sends the manifest. When the start of
@@ -54,16 +54,16 @@ public final class VaultChannelSync: @unchecked Sendable {
       failure = error
     }
     let startAgain = failure != nil
-    let sender = Task { [client, buffer, retry] in
+    let sender = Task { [client, buffer, runner] in
       if startAgain {
-        await Self.retrying(retry, client, failed: 1, first: { try await client.start() }, again: { try await client.start() })
+        await runner.run(failed: 1, first: { try await client.start() }, again: { try await client.start() })
       }
       for await _ in buffer.signals {
         switch buffer.take() {
         case .changes(let list):
-          await Self.retrying(retry, client, first: { try await client.send(list) }, again: { try await client.send([]) })
+          await runner.run(first: { try await client.send(list) }, again: { try await client.send([]) })
         case .manifest:
-          await Self.retrying(retry, client, first: { try await client.resync() }, again: { try await client.resync() })
+          await runner.run(first: { try await client.resync() }, again: { try await client.resync() })
         case .nothing:
           continue
         }
@@ -75,13 +75,24 @@ public final class VaultChannelSync: @unchecked Sendable {
     }
   }
 
-  /// What the vault shows in the menu.
+  /// What the vault shows in the menu: stopped, retrying during a backoff,
+  /// connected after an applied manifest, or connecting.
   public func status() async -> VaultSyncStatus {
-    .connecting
+    if case .stopped(let code) = await client.status {
+      return .stopped(code: code)
+    }
+    if runner.isWaiting {
+      return .retrying
+    }
+    return await client.isReady ? .connected : .connecting
   }
 
-  /// Forgets the saved connection of a removed vault and connects again.
-  public func connectAgain() async {}
+  /// Forgets the saved connection of a removed vault, and asks the send task
+  /// to connect again and send the manifest.
+  public func connectAgain() async {
+    await client.connectAgain()
+    buffer.requestManifest()
+  }
 
   /// Stops the watcher and the sends.
   public func stop() {
@@ -90,41 +101,6 @@ public final class VaultChannelSync: @unchecked Sendable {
     lock.withLock {
       sender?.cancel()
       sender = nil
-    }
-  }
-
-  /// Runs `first`, and after each failure waits the backoff and runs
-  /// `again`, until one works, the channel is stopped, or the task is
-  /// cancelled. `failed` counts the failures before this call: with one, the
-  /// backoff comes before `first`. The client keeps the changes of a failed
-  /// send, so `again` sends no new change.
-  private static func retrying(
-    _ retry: VaultChannelRetry,
-    _ client: NotesChannelClient,
-    failed: Int = 0,
-    first: @escaping @Sendable () async throws -> Void,
-    again: @escaping @Sendable () async throws -> Void
-  ) async {
-    var work = first
-    var attempt = failed
-    while !Task.isCancelled {
-      if attempt > 0 {
-        if case .stopped = await client.status {
-          return
-        }
-        do {
-          try await retry.wait(attempt: attempt)
-        } catch {
-          return
-        }
-      }
-      do {
-        try await work()
-        return
-      } catch {
-        attempt += 1
-        work = again
-      }
     }
   }
 }

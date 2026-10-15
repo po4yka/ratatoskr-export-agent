@@ -93,8 +93,17 @@ final class AgentMenuCoordinator: NSObject {
     }
   }
 
+  /// Forgets the saved connection of a removed vault and connects it again.
   @objc
-  func connectVaultAgainSelected(_ sender: NSMenuItem) {}
+  func connectVaultAgainSelected(_ sender: NSMenuItem) {
+    guard let graph, let id = sender.representedObject as? UUID else { return }
+    Task {
+      await graph.vaults.connectAgain(id: id)
+      if let menu = installedAgentMenu() {
+        AgentMenu.apply(vaultRows: await graph.vaults.statusRows(), to: menu)
+      }
+    }
+  }
 
   @objc
   func checkForUpdatesSelected() {

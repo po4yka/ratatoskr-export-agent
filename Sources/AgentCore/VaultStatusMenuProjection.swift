@@ -26,11 +26,23 @@ public struct VaultStatusRow: Equatable, Sendable {
 /// Renders the status of a vault into a menu row.
 public enum VaultStatusMenuProjection {
   public static func title(_ row: VaultStatusRow) -> String {
-    ""
+    "Vault \(row.displayName): \(state(row.status))"
   }
 
-  /// Only the owner removed a connection that the agent can connect again.
+  /// Only a connection that the owner removed can be connected again; a
+  /// vault that another device or channel sends stays stopped.
   public static func canConnectAgain(_ row: VaultStatusRow) -> Bool {
-    false
+    row.status == .stopped(code: NotesFault.removed)
+  }
+
+  private static func state(_ status: VaultSyncStatus) -> String {
+    switch status {
+    case .connecting: "connecting"
+    case .connected: "connected"
+    case .retrying: "offline, trying again"
+    case .stopped(NotesFault.removed): "stopped, the connection was removed"
+    case .stopped(NotesFault.channelMismatch): "stopped, another device or channel sends this vault"
+    case .stopped: "stopped"
+    }
   }
 }

@@ -17,6 +17,23 @@ extension NotesChannelClient {
     }
   }
 
+  /// Whether the manifest of the connection is applied.
+  public var isReady: Bool {
+    ready
+  }
+
+  /// Forgets the connection, also the saved one, and ends a stop, so the
+  /// next start connects again. For a vault whose connection the owner
+  /// removed, when the owner wants it connected again.
+  public func connectAgain() async {
+    try? await stateStore?.remove(vaultKey: vaultKey)
+    connectionID = nil
+    stateRestored = true
+    ready = false
+    pending.removeAll()
+    status = .notConnected
+  }
+
   /// Before the first connect, takes the connection that a run before this
   /// one saved for the vault. The manifest then goes to it first.
   func restoreState() async {

@@ -61,9 +61,19 @@ public actor VaultRuntimeComponent: OperationalRuntimeComponent {
     running.removeAll()
   }
 
-  /// The sync of a running vault.
-  public func sync(for id: UUID) -> (any VaultSyncing)? {
-    running.first { $0.vault.vault.id == id }?.sync
+  /// The status of each running vault, in the order of the vaults.
+  public func statusRows() async -> [VaultStatusRow] {
+    var rows: [VaultStatusRow] = []
+    for entry in running {
+      let vault = entry.vault.vault
+      rows.append(VaultStatusRow(id: vault.id, displayName: vault.displayName, status: await entry.sync.status()))
+    }
+    return rows
+  }
+
+  /// Connects a vault whose connection the owner removed again.
+  public func connectAgain(id: UUID) async {
+    await running.first { $0.vault.vault.id == id }?.sync.connectAgain()
   }
 }
 

@@ -24,6 +24,7 @@ final class ProductApplicationCoordinator: NSObject, NSApplicationDelegate {
         installLifecycleTriggers()
         await graph.runtime.start()
         refreshImportStatus()
+        await refreshVaultStatus()
       } catch {
         presentRuntimeFailure()
       }
@@ -61,6 +62,14 @@ final class ProductApplicationCoordinator: NSObject, NSApplicationDelegate {
     await graph.refreshFolders()
     await graph.runtime.reconcile()
     refreshImportStatus()
+    await refreshVaultStatus()
+  }
+
+  private func refreshVaultStatus() async {
+    guard let graph else { return }
+    let rows = await graph.vaults.statusRows()
+    guard let menu = installedAgentMenu() else { return }
+    AgentMenu.apply(vaultRows: rows, to: menu)
   }
 
   private func refreshImportStatus() {

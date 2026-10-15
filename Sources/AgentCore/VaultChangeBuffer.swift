@@ -38,6 +38,15 @@ final class VaultChangeBuffer: @unchecked Sendable {
     continuation.yield()
   }
 
+  /// Drops the waiting changes and asks for one manifest.
+  func requestManifest() {
+    lock.withLock {
+      changes.removeAll()
+      overflowed = true
+    }
+    continuation.yield()
+  }
+
   /// Everything that waits: the changes in drain order, or a manifest after
   /// an overflow.
   func take() -> Taken {
