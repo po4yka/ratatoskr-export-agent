@@ -2,6 +2,9 @@ import Foundation
 
 /// A file whose bytes the notes service can ask for.
 struct NotesBlobFile: Equatable, Sendable {
+  /// The SHA-256 of no bytes; notes takes it without an upload.
+  static let emptySHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
   let path: String
   let sha256: String
   let lengthBytes: Int
@@ -69,8 +72,11 @@ extension NotesChannelClient {
       guard let file = files.first(where: { $0.sha256 == hash }) else {
         throw NotesChannelError.staleBytes
       }
-      guard file.lengthBytes > 0 else {
+      if hash == NotesBlobFile.emptySHA256 {
         continue
+      }
+      guard file.lengthBytes > 0 else {
+        throw NotesChannelError.staleBytes
       }
       do {
         _ = try await ResumableArchiveUploader(chunkSize: Self.chunkSizeBytes).upload(
@@ -84,6 +90,23 @@ extension NotesChannelClient {
         throw NotesChannelError.staleBytes
       }
     }
+  }
+
+  /// The change with its hash and length. A created or updated change that
+  /// lacks one reads both from its file; nil when the file is gone or its
+  /// hash is not the hash of the change.
+  func completed(_ change: VaultChange) -> VaultChange? {
+    guard change.kind != .deleted, change.sha256 == nil || change.byteLength == nil else {
+      return change
+    }
+    guard let found = try? StreamingHasher().fingerprint(at: vault.appendingPathComponent(change.path)),
+          change.sha256 == nil || change.sha256 == found.sha256Hex else {
+      return nil
+    }
+    var complete = change
+    complete.sha256 = found.sha256Hex
+    complete.byteLength = found.byteSize
+    return complete
   }
 
   /// One request on a route of the connection.

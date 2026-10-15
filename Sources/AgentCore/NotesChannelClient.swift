@@ -82,11 +82,16 @@ public actor NotesChannelClient {
   }
 
   /// Numbers the changes after the committed sequence and sends them. Before
-  /// the first applied manifest, the client starts first.
+  /// the first applied manifest, the client starts first. A change that
+  /// lacks its hash or length, and whose file cannot give them, is dropped,
+  /// and the client sends a manifest instead.
   public func send(_ changes: [VaultChange]) async throws {
     try checkNotStopped()
     for change in changes {
-      var numbered = change
+      guard var numbered = completed(change) else {
+        ready = false
+        continue
+      }
       numbered.sequence = nextSequence
       nextSequence += 1
       pending.append(numbered)
