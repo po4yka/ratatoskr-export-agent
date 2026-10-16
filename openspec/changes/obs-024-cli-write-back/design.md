@@ -30,6 +30,10 @@ without extension>`. Every other rename and every `move` runs `obsidian move pat
 to=<target path>`. Both update the links on the device by the rules of Obsidian; the files whose links
 changed reach notes through the watcher.
 
+Obsidian CLI 1.14.4 does not create a missing destination folder. After the path and base checks,
+and after refusing an existing target, the agent creates that folder before the CLI move. It still
+moves the file only through Obsidian, so link updates keep their normal behaviour.
+
 ### Atomic write inside the vault
 
 An `update` writes a temporary file `.ratatoskr-<uuid>.tmp` in the folder of the target and renames it

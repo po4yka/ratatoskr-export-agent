@@ -44,7 +44,7 @@ extension ObsidianCLIApply {
       try files.write(bytes, to: source)
       return nil
     case "rename", "move":
-      return await move(operation, from: source, to: target)
+      return try await move(operation, from: source, to: target)
     case "delete":
       return await run(["delete", "path=\(operation.path)"]) { !FileManager.default.fileExists(atPath: source.path) }
     case "set_property":
@@ -76,10 +76,11 @@ extension ObsidianCLIApply {
 
   /// A rename that keeps the folder and the extension is `obsidian rename`;
   /// every other rename and move is `obsidian move`. Both update the links.
-  private func move(_ operation: DeviceOperation, from source: URL, to target: URL) async -> DeviceOperationOutcome? {
+  private func move(_ operation: DeviceOperation, from source: URL, to target: URL) async throws -> DeviceOperationOutcome? {
     guard !FileManager.default.fileExists(atPath: target.path) else {
       return .failed(code: Code.targetExists)
     }
+    try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
     let sameFolder = source.deletingLastPathComponent() == target.deletingLastPathComponent()
     let arguments =
       operation.kind == "rename" && sameFolder && source.pathExtension == target.pathExtension
